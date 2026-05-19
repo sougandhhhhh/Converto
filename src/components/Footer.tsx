@@ -10,7 +10,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Footer Top Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pb-8 border-b border-border/20">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 pb-8 border-b border-border/20">
           <div className="space-y-3">
             <Link href="/" className="text-lg font-bold tracking-tight select-none">
               <span className="text-foreground">Conver</span>
@@ -19,27 +19,6 @@ export default function Footer() {
             <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">
               Precision document conversion with zero quality loss. Secure, instant, student-friendly.
             </p>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Product</h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
-                  All Conversion Tools
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Student Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                  User Dashboard
-                </Link>
-              </li>
-            </ul>
           </div>
 
           <div>
