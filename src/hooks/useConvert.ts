@@ -4,7 +4,7 @@ import { marked } from "marked";
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
 
 export interface UseConvertResult {
-  convert: (file: File, format: string) => Promise<void>;
+  convert: (file: File, fromFormat: string, toFormat: string) => Promise<void>;
   status: ConvertStatus;
   error: string | null;
   progress: number;
@@ -31,11 +31,12 @@ export function useConvert(): UseConvertResult {
   }, [downloadUrl]);
 
   /**
-   * Converts a file to PDF
+   * Converts a file
    * @param {File} file The file to convert
-   * @param {string} format The format of the source file (e.g., '.docx')
+   * @param {string} fromFormat The format of the source file (e.g., '.docx')
+   * @param {string} toFormat The format of the target file (e.g., '.pdf')
    */
-  const convert = async (file: File, format: string) => {
+  const convert = async (file: File, fromFormat: string, toFormat: string) => {
     setStatus("uploading");
     setError(null);
     setProgress(20);
@@ -43,14 +44,16 @@ export function useConvert(): UseConvertResult {
 
     const gotenbergUrl = process.env.NEXT_PUBLIC_GOTENBERG_URL;
     
-    // We can do direct browser-to-Gotenberg conversion for documents/spreadsheets/presentations/html/markdown
-    // if NEXT_PUBLIC_GOTENBERG_URL is set, to bypass Vercel's 4.5MB payload limit.
-    const isDirectConvertible = gotenbergUrl && [
-      ".docx", ".doc", ".odt", ".txt",
-      ".xlsx", ".xls", ".csv",
-      ".pptx", ".ppt",
-      ".html", ".md"
-    ].includes(format);
+    // Direct Gotenberg conversion is only possible if NEXT_PUBLIC_GOTENBERG_URL is set
+    // AND the target format is PDF (.pdf) and source is one of the supported Gotenberg inputs.
+    const isDirectConvertible = gotenbergUrl && 
+      toFormat === ".pdf" &&
+      [
+        ".docx", ".doc", ".odt", ".txt",
+        ".xlsx", ".xls", ".csv",
+        ".pptx", ".ppt",
+        ".html", ".md"
+      ].includes(fromFormat);
 
     try {
       // Transition to converting state right before making the request
@@ -63,13 +66,13 @@ export function useConvert(): UseConvertResult {
         const formDataToSend = new FormData();
         let endpoint = "";
 
-        if ([".docx", ".doc", ".odt", ".txt", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"].includes(format)) {
+        if ([".docx", ".doc", ".odt", ".txt", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"].includes(fromFormat)) {
           endpoint = "/forms/libreoffice/convert";
           formDataToSend.append("files", file, file.name);
-        } else if (format === ".html") {
+        } else if (fromFormat === ".html") {
           endpoint = "/forms/chromium/convert/html";
           formDataToSend.append("files", file, "index.html");
-        } else if (format === ".md") {
+        } else if (fromFormat === ".md") {
           const mdText = await file.text();
           const htmlContent = await marked.parse(mdText);
           endpoint = "/forms/chromium/convert/html";
@@ -83,7 +86,8 @@ export function useConvert(): UseConvertResult {
       } else {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("format", format);
+        formData.append("format", fromFormat);
+        formData.append("to", toFormat);
 
         response = await fetch("/api/convert", {
           method: "POST",

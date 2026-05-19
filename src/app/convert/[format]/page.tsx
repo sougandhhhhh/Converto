@@ -5,15 +5,69 @@ import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Settings, HelpCircle, ArrowLeft, UploadCloud, FileText, X, ArrowRight, RefreshCw, CheckCircle2, Eye, Plus, AlertCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useConvert } from "@/hooks/useConvert";
 
-const FORMAT_CONFIG: Record<string, { title: string, from: string, to: string, accept: any }> = {
-  "word-to-pdf": { title: "Word to PDF", from: ".docx", to: ".pdf", accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] } },
-  "excel-to-pdf": { title: "Excel to PDF", from: ".xlsx", to: ".pdf", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } },
-  "ppt-to-pdf": { title: "PowerPoint to PDF", from: ".pptx", to: ".pdf", accept: { "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"] } },
-  "jpg-to-pdf": { title: "JPG to PDF", from: ".jpg", to: ".pdf", accept: { "image/jpeg": [".jpg", ".jpeg"] } },
-  "pdf-to-word": { title: "PDF to Word", from: ".pdf", to: ".docx", accept: { "application/pdf": [".pdf"] } },
+const MIME_TYPES: Record<string, string[]> = {
+  ".pdf": ["application/pdf"],
+  ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ".doc": ["application/msword"],
+  ".pptx": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  ".ppt": ["application/vnd.ms-powerpoint"],
+  ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ".xls": ["application/vnd.ms-excel"],
+  ".csv": ["text/csv"],
+  ".txt": ["text/plain"],
+  ".jpg": ["image/jpeg"],
+  ".jpeg": ["image/jpeg"],
+  ".png": ["image/png"],
+  ".webp": ["image/webp"],
+  ".heic": ["image/heic"],
+  ".html": ["text/html"],
+  ".md": ["text/markdown"],
+  ".zip": ["application/zip"],
+  ".odt": ["application/vnd.oasis.opendocument.text"],
+  ".ods": ["application/vnd.oasis.opendocument.spreadsheet"],
+  ".gif": ["image/gif"],
 };
+
+function getConfigForSlug(slug: string) {
+  let targetSlug = slug;
+  if (slug === "word-to-pdf") targetSlug = "docx-to-pdf";
+  if (slug === "excel-to-pdf") targetSlug = "xlsx-to-pdf";
+  if (slug === "ppt-to-pdf") targetSlug = "pptx-to-pdf";
+  if (slug === "jpg-to-pdf") targetSlug = "jpg-to-pdf";
+  if (slug === "pdf-to-word") targetSlug = "pdf-to-docx";
+
+  const parts = targetSlug.split("-to-");
+  if (parts.length !== 2) {
+    return {
+      title: "DOCX to PDF",
+      from: ".docx",
+      to: ".pdf",
+      accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] }
+    };
+  }
+
+  const [fromExt, toExt] = parts;
+  const from = `.${fromExt}`;
+  const to = `.${toExt}`;
+
+  const acceptTypes = MIME_TYPES[from] || ["*/*"];
+  const accept: Record<string, string[]> = {};
+  accept[acceptTypes[0]] = [from];
+
+  if (from === ".jpg") {
+    accept["image/jpeg"] = [".jpg", ".jpeg"];
+  }
+
+  return {
+    title: `${fromExt.toUpperCase()} to ${toExt.toUpperCase()}`,
+    from,
+    to,
+    accept
+  };
+}
 
 interface FileItem {
   id: string;
@@ -27,9 +81,9 @@ function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, con
   // Trigger conversion when 'Convert All' is pressed at the parent level
   React.useEffect(() => {
     if (forceConvert && status === "idle") {
-      convert(item.file, config.from);
+      convert(item.file, config.from, config.to);
     }
-  }, [forceConvert, status, convert, item.file, config.from]);
+  }, [forceConvert, status, convert, item.file, config.from, config.to]);
 
   return (
     <div className="bg-[#211f24] border border-[#494551]/50 rounded-lg p-5 relative overflow-hidden transition-all">
@@ -80,7 +134,7 @@ function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, con
                 <button onClick={() => onRemove(item.id)} className="p-2 text-[#948e9c] hover:text-[#ffb4ab] transition-colors rounded hover:bg-[#36343a]">
                   <X size={16} />
                 </button>
-                <Button onClick={() => convert(item.file, config.from)} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72]">
+                <Button onClick={() => convert(item.file, config.from, config.to)} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72]">
                   Convert
                 </Button>
               </div>
@@ -124,7 +178,7 @@ function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, con
                 <button onClick={() => onRemove(item.id)} className="p-2 text-[#948e9c] hover:text-[#ffb4ab] transition-colors rounded hover:bg-[#36343a]">
                   <X size={16} />
                 </button>
-                <Button onClick={() => convert(item.file, config.from)} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72]">
+                <Button onClick={() => convert(item.file, config.from, config.to)} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72]">
                   Retry
                 </Button>
               </div>
@@ -140,8 +194,8 @@ function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, con
 export default function ConvertPage() {
   const params = useParams();
   const router = useRouter();
-  const formatSlug = (params.format as string) || "word-to-pdf";
-  const config = FORMAT_CONFIG[formatSlug] || FORMAT_CONFIG["word-to-pdf"];
+  const formatSlug = (params.format as string) || "docx-to-pdf";
+  const config = getConfigForSlug(formatSlug);
 
   const [files, setFiles] = useState<FileItem[]>([]);
   const [forceConvertAll, setForceConvertAll] = useState(false);
@@ -174,8 +228,8 @@ export default function ConvertPage() {
   };
 
   return (
-    <div className="bg-[#141218] text-[#e6e0e9] min-h-screen flex flex-col font-sans selection:bg-[#6750a4] selection:text-[#e0d2ff]">
-      <header className="bg-[#141218] border-b border-[#494551] flex justify-between items-center w-full px-5 md:px-10 h-16 sticky top-0 z-50">
+    <div className="bg-[#141218] text-[#e6e0e9] h-screen w-screen flex flex-col font-sans selection:bg-[#6750a4] selection:text-[#e0d2ff] overflow-hidden">
+      <header className="bg-[#141218] border-b border-[#494551]/60 flex justify-between items-center w-full px-5 md:px-10 h-16 shrink-0 z-50">
         <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
           <span className="text-2xl font-bold text-[#cfbcff] tracking-tight">CONVERTO</span>
         </div>
@@ -189,9 +243,9 @@ export default function ConvertPage() {
         </div>
       </header>
 
-      <main className="flex-grow flex flex-col items-center px-5 md:px-10 py-12">
-        <div className="w-full max-w-3xl flex flex-col gap-8">
-          <div className="flex items-center justify-between">
+      <main className="flex-1 flex flex-col items-center px-5 md:px-10 py-6 overflow-hidden">
+        <div className="w-full max-w-3xl h-full flex flex-col gap-6 overflow-hidden">
+          <div className="flex items-center justify-between shrink-0">
             <button onClick={() => router.push('/')} className="inline-flex items-center gap-2 text-[#cfbcff] hover:text-[#e9ddff] transition-colors text-sm font-medium group">
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
               Back to formats
@@ -205,50 +259,53 @@ export default function ConvertPage() {
             )}
           </div>
 
-          <div {...getRootProps()} className={`w-full ${files.length === 0 ? 'min-h-[320px]' : ''} outline-none`}>
+          <div {...getRootProps()} className="w-full flex-1 min-h-0 outline-none overflow-hidden flex flex-col">
             <input {...getInputProps()} />
             
             {files.length === 0 ? (
               // Empty State Dropzone
-              <div className={`w-full h-full bg-[#0f0d13] border-2 ${
+              <div className={`w-full flex-1 bg-[#0f0d13] border-2 ${
                 isDragActive ? "border-[#cfbcff] bg-[#1d1b20]" : "border-[#494551]"
-              } border-dashed rounded-xl p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-colors hover:border-[#cfbcff] group hover:bg-[#1d1b20]`}>
-                <div className="w-20 h-20 rounded-full bg-[#211f24] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform group-hover:bg-[#6750a4]/20">
-                  <UploadCloud size={40} className="text-[#cbc4d2] group-hover:text-[#cfbcff] transition-colors" />
+              } border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors hover:border-[#cfbcff] group hover:bg-[#1d1b20]`}>
+                <div className="w-16 h-16 rounded-full bg-[#211f24] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform group-hover:bg-[#6750a4]/20">
+                  <UploadCloud size={32} className="text-[#cbc4d2] group-hover:text-[#cfbcff] transition-colors" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-2">Drop your {config.from} files here</h2>
-                <p className="text-[#cbc4d2] mb-6 text-sm">or click to browse from your computer (Multiple allowed)</p>
-                <div className="flex items-center gap-2 text-xs font-medium text-[#948e9c]">
-                  <span className="px-2 py-1 bg-[#211f24] rounded">Max size: 50MB</span>
-                  <span className="px-2 py-1 bg-[#211f24] rounded">Formats: {config.from}</span>
+                <h2 className="text-xl font-semibold mb-1">Drop your {config.from} files here</h2>
+                <p className="text-[#cbc4d2] mb-4 text-xs">or click to browse from your computer (Multiple allowed)</p>
+                <div className="flex items-center gap-2 text-[10px] font-medium text-[#948e9c]">
+                  <span className="px-2 py-0.5 bg-[#211f24] rounded">Max size: 50MB</span>
+                  <span className="px-2 py-0.5 bg-[#211f24] rounded">Formats: {config.from}</span>
                 </div>
               </div>
             ) : (
               // Active Files List
-              <div className="flex flex-col gap-4">
+              <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                 {/* Small dropzone for adding more files when dragging over the area */}
                 {isDragActive && (
-                  <div className="w-full bg-[#1d1b20] border-2 border-[#cfbcff] border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center">
-                     <UploadCloud size={32} className="text-[#cfbcff] mb-2 animate-bounce" />
-                     <p className="text-[#cfbcff] font-medium">Drop more files here...</p>
+                  <div className="w-full bg-[#1d1b20] border-2 border-[#cfbcff] border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center shrink-0">
+                     <UploadCloud size={24} className="text-[#cfbcff] mb-1 animate-bounce" />
+                     <p className="text-[#cfbcff] text-sm font-medium">Drop more files here...</p>
                   </div>
                 )}
                 
-                {files.map(item => (
-                  <FileRow 
-                    key={item.id} 
-                    item={item} 
-                    config={config} 
-                    onRemove={removeFile}
-                    forceConvert={forceConvertAll}
-                  />
-                ))}
+                {/* Scrollable Area for Files List */}
+                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 custom-scrollbar">
+                  {files.map(item => (
+                    <FileRow 
+                      key={item.id} 
+                      item={item} 
+                      config={config} 
+                      onRemove={removeFile}
+                      forceConvert={forceConvertAll}
+                    />
+                  ))}
+                </div>
 
                 {/* Add More Files Button underneath the list */}
                 {!isDragActive && (
-                  <div className="mt-4 flex justify-center">
-                    <Button onClick={open} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72] gap-2 w-full py-8 text-base shadow-[0_0_15px_rgba(207,188,255,0.2)]">
-                      <Plus size={20} />
+                  <div className="mt-2 shrink-0">
+                    <Button onClick={open} className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72] gap-2 w-full py-6 text-sm shadow-[0_0_15px_rgba(207,188,255,0.2)]">
+                      <Plus size={16} />
                       Add more {config.from} files
                     </Button>
                   </div>
@@ -260,14 +317,13 @@ export default function ConvertPage() {
         </div>
       </main>
 
-      <footer className="bg-[#141218] border-t border-[#494551] flex flex-col md:flex-row justify-between items-center w-full px-5 md:px-10 py-8 gap-4 mt-auto">
-        <div className="text-sm font-bold text-[#cfbcff]">
-          © 2026 CONVERTO. Technical Precision.
+      <footer className="bg-[#141218] border-t border-[#494551]/60 flex justify-between items-center w-full px-5 md:px-10 h-12 shrink-0">
+        <div className="text-xs font-bold text-[#cfbcff]">
+          © 2026 CONVERTO.
         </div>
         <div className="flex items-center gap-6">
-          <a className="text-sm text-[#cbc4d2] hover:text-[#cfbcff] transition-colors" href="#">Privacy Policy</a>
-          <a className="text-sm text-[#cbc4d2] hover:text-[#cfbcff] transition-colors" href="#">Terms of Service</a>
-          <a className="text-sm text-[#cbc4d2] hover:text-[#cfbcff] transition-colors" href="#">API Docs</a>
+          <Link className="text-xs text-[#cbc4d2] hover:text-[#cfbcff] transition-colors" href="/privacy">Privacy Policy</Link>
+          <Link className="text-xs text-[#cbc4d2] hover:text-[#cfbcff] transition-colors" href="/terms">Terms of Service</Link>
         </div>
       </footer>
     </div>
