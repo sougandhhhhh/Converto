@@ -404,7 +404,7 @@ export default function ConvertPage() {
                       boxShadow: `0 8px 24px ${accent}25`
                     }}
                   >
-                    <Zap size={15} /> Convert All
+                    <Zap size={15} /> {files.length > 1 ? "Convert All" : "Convert"}
                   </button>
                 </div>
               )}
