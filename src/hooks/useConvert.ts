@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { marked } from "marked";
 
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
@@ -8,6 +8,7 @@ export interface UseConvertResult {
   status: ConvertStatus;
   error: string | null;
   progress: number;
+  downloadUrl: string | null;
 }
 
 /**
@@ -18,9 +19,19 @@ export function useConvert(): UseConvertResult {
   const [status, setStatus] = useState<ConvertStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  // Clean up Object URL when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (downloadUrl && downloadUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(downloadUrl);
+      }
+    };
+  }, [downloadUrl]);
 
   /**
-   * Converts a file to PDF and automatically downloads it
+   * Converts a file to PDF
    * @param {File} file The file to convert
    * @param {string} format The format of the source file (e.g., '.docx')
    */
@@ -28,6 +39,7 @@ export function useConvert(): UseConvertResult {
     setStatus("uploading");
     setError(null);
     setProgress(20);
+    setDownloadUrl(null);
 
     const gotenbergUrl = process.env.NEXT_PUBLIC_GOTENBERG_URL;
     
@@ -94,29 +106,17 @@ export function useConvert(): UseConvertResult {
       // Check if response is JSON (R2 signed URL) or PDF stream
       const contentType = response.headers.get("content-type");
       
-      let downloadUrl = "";
+      let url = "";
 
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
-        downloadUrl = data.url;
+        url = data.url;
       } else {
         const blob = await response.blob();
-        downloadUrl = URL.createObjectURL(blob);
-        
-        // Cleanup after 60 seconds
-        setTimeout(() => {
-          URL.revokeObjectURL(downloadUrl);
-        }, 60000);
+        url = URL.createObjectURL(blob);
       }
 
-      // Trigger automatic download
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
+      setDownloadUrl(url);
       setStatus("done");
       setProgress(100);
     } catch (err) {
@@ -127,5 +127,5 @@ export function useConvert(): UseConvertResult {
     }
   };
 
-  return { convert, status, error, progress };
+  return { convert, status, error, progress, downloadUrl };
 }

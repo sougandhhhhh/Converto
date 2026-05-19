@@ -22,7 +22,7 @@ interface FileItem {
 
 // Sub-component to handle individual file conversion state using the hook
 function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, config: any, onRemove: (id: string) => void, forceConvert: boolean }) {
-  const { convert, status, error, progress } = useConvert();
+  const { convert, status, error, progress, downloadUrl } = useConvert();
 
   // Trigger conversion when 'Convert All' is pressed at the parent level
   React.useEffect(() => {
@@ -96,11 +96,26 @@ function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, con
           )}
 
           {status === "done" && (
-            <>
+            <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-[#1B3B24] text-[#A3E5B5] border border-[#2D5A3A]">
-                Done (Auto-downloaded)
+                Done
               </span>
-            </>
+              {downloadUrl && (
+                <Button
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = downloadUrl;
+                    a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  className="bg-[#cfbcff] hover:bg-[#e9ddff] text-[#381e72] h-8 text-xs px-3 py-1 flex items-center gap-1 font-medium transition-colors cursor-pointer animate-fade-in"
+                >
+                  Download
+                </Button>
+              )}
+            </div>
           )}
 
           {status === "error" && (
