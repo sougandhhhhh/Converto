@@ -57,13 +57,13 @@ export async function POST(req: NextRequest) {
       const formDataToSend = new FormData();
 
       if ([".docx", ".doc", ".odt", ".txt"].includes(format)) {
-        endpoint = "/forms/libreoffice/convert/documents";
+        endpoint = "/forms/libreoffice/convert";
         formDataToSend.append("files", new Blob([buffer]), file.name);
       } else if ([".xlsx", ".xls", ".csv"].includes(format)) {
-        endpoint = "/forms/libreoffice/convert/spreadsheets";
+        endpoint = "/forms/libreoffice/convert";
         formDataToSend.append("files", new Blob([buffer]), file.name);
       } else if ([".pptx", ".ppt"].includes(format)) {
-        endpoint = "/forms/libreoffice/convert/presentations";
+        endpoint = "/forms/libreoffice/convert";
         formDataToSend.append("files", new Blob([buffer]), file.name);
       } else if (format === ".html") {
         endpoint = "/forms/chromium/convert/html";

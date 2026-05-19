@@ -76,7 +76,7 @@ describe('Conversion API', () => {
     const req = createRequest('.docx');
     await POST(req);
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:3020/forms/libreoffice/convert/documents',
+      'http://localhost:3020/forms/libreoffice/convert',
       expect.any(Object)
     );
   });
@@ -85,7 +85,7 @@ describe('Conversion API', () => {
     const req = createRequest('.xlsx');
     await POST(req);
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:3020/forms/libreoffice/convert/spreadsheets',
+      'http://localhost:3020/forms/libreoffice/convert',
       expect.any(Object)
     );
   });
@@ -94,7 +94,7 @@ describe('Conversion API', () => {
     const req = createRequest('.pptx');
     await POST(req);
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:3020/forms/libreoffice/convert/presentations',
+      'http://localhost:3020/forms/libreoffice/convert',
       expect.any(Object)
     );
   });
