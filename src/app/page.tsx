@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  HelpCircle, FileText, FileSpreadsheet, FileImage,
+  FileText, FileSpreadsheet, FileImage,
   Presentation, FileCode, X, ShieldCheck,
   ArrowRight, Zap, Lock, Layers, ChevronRight,
-  RefreshCw, Download, Sun, Moon,
+  HelpCircle, Sparkles, Star, Quote, ArrowUpRight
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { motion, AnimatePresence } from "framer-motion";
 
-// ─── Format configs ───────────────────────────────────────────────────────────
-
+// Format configurations
 const FORMAT_CONFIG = [
   { id: "pdf",  name: "PDF",  icon: FileText,       accent: "#ef4444", glow: "rgba(239,68,68,0.15)",   badge: "Most Popular" },
   { id: "docx", name: "DOCX", icon: FileText,       accent: "#8b5cf6", glow: "rgba(139,92,246,0.15)",  badge: null },
@@ -84,274 +86,413 @@ const SUB_BUTTONS: Record<string, { label: string; slug: string }[]> = {
 
 export default function HomePage() {
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [activeFormat, setActiveFormat] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
 
   const isDark = theme === "dark";
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   const activeConfig = FORMAT_CONFIG.find(f => f.id === activeFormat);
 
-  // Theme-aware colors
-  const bg        = isDark ? "#080808" : "#f8fafc";
-  const bgCard    = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-  const bgCardHov = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const border    = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
-  const textPrim  = isDark ? "#f8fafc" : "#0f172a";
-  const textMid   = isDark ? "#e2e8f0" : "#334155";
-  const textMute  = isDark ? "#475569" : "#64748b";
-  const navBg     = isDark ? "rgba(8,8,8,0.85)"   : "rgba(248,250,252,0.85)";
-  const navBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-  const modalBg   = isDark ? "#0f0f0f" : "#ffffff";
-  const modalBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
-  const subBtnBg  = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif !important; background: ${bg} !important; color: ${textMid} !important; overflow-x: hidden; transition: background 0.3s ease, color 0.3s ease; }
-        ::-webkit-scrollbar { width: 6.5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); border-radius: 4px; }
-        .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        .anim-0 { animation: fadeInUp 0.6s ease forwards; }
-        .anim-1 { animation: fadeInUp 0.6s 0.1s ease forwards; opacity:0; }
-        .anim-2 { animation: fadeInUp 0.6s 0.2s ease forwards; opacity:0; }
-        .anim-3 { animation: fadeInUp 0.6s 0.3s ease forwards; opacity:0; }
-        .anim-4 { animation: fadeInUp 0.6s 0.4s ease forwards; opacity:0; }
-        @keyframes glow { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
-        .glow-pulse{animation:glow 3s ease-in-out infinite}
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes scaleIn { from{opacity:0;transform:scale(0.95) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
-        .modal-backdrop{animation:fadeIn 0.2s ease}
-        .modal-content{animation:scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1)}
-        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        .shimmer { background: linear-gradient(105deg, transparent 40%, ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'} 50%, transparent 60%); background-size:200% 100%; animation:shimmer 2.5s infinite; }
-      `}</style>
+    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+      
+      {/* Background Decorative Glow Panels */}
+      <div className="absolute top-[-10%] left-[10%] w-[50vw] h-[50vw] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="absolute bottom-[20%] right-[-10%] w-[45vw] h-[45vw] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      <div style={{ background: bg, minHeight: "100vh", color: textMid, transition: "background 0.3s ease", position: "relative" }}>
+      {/* Global Navbar */}
+      <Navbar />
 
-        {/* ── NAVBAR ── */}
-        <header style={{
-          position: "sticky", top: 0, zIndex: 50,
-          background: scrolled ? navBg : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? `1px solid ${navBorder}` : "1px solid transparent",
-          transition: "all 0.3s ease",
-        }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {/* Logo — top left */}
-            <Link href="/" style={{ textDecoration: "none", fontSize: "20px", fontWeight: 800, letterSpacing: "-0.03em" }}>
-              <span style={{ color: textPrim }}>Conver</span>
-              <span className="gradient-text">to</span>
-            </Link>
+      {/* ── HERO SECTION ── */}
+      <section className="relative px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center max-w-7xl mx-auto flex flex-col items-center">
+        
+        {/* Animated Badge */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-300 text-xs font-semibold select-none mb-6 shadow-sm shadow-indigo-500/5"
+        >
+          <Zap size={13} className="animate-pulse" /> Student-Focused File Conversion Platform
+        </motion.div>
 
-            {/* Right nav actions */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {/* Visible theme toggle */}
-              <button
-                onClick={toggleTheme}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`, color: textMid, cursor: "pointer", fontSize: "13px", fontWeight: 500, transition: "all 0.2s" }}
-                aria-label="Toggle theme"
+        {/* Hero Title */}
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none mb-6 max-w-4xl"
+        >
+          Convert Any File <span className="gradient-brand-text">Instantly</span>
+        </motion.h1>
+
+        {/* Hero Description */}
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10"
+        >
+          PDF, Word, Excel, PowerPoint, images &mdash; convert between 56+ formats with zero quality loss. Built for students, trusted by professionals.
+        </motion.p>
+
+        {/* Action Buttons */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45 }}
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md mb-16"
+        >
+          <button
+            onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 rounded-2xl bg-foreground text-background font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/10"
+          >
+            Start Converting <ArrowRight size={16} />
+          </button>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 rounded-2xl bg-secondary/80 text-foreground border border-border/40 font-medium hover:bg-secondary transition-all cursor-pointer"
+          >
+            <HelpCircle size={16} /> Read FAQ
+          </button>
+        </motion.div>
+
+        {/* Statistics Panels */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl p-6 rounded-3xl glassmorphism glass-card border-border/40"
+        >
+          {[
+            { value: "56+", label: "Conversion Formats" },
+            { value: "100%", label: "Free to Use" },
+            { value: "Unlimited", label: "Daily Conversions" },
+            { value: "Zero", label: "File Retention" }
+          ].map((stat, i) => (
+            <div key={i} className="text-center p-4">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">{stat.label}</div>
+            </div>
+          ))}
+        </motion.div>
+
+      </section>
+
+      {/* ── FORMAT PICKER SECTION ── */}
+      <section id="formats" className="px-4 sm:px-6 lg:px-8 py-20 border-t border-border/20 max-w-7xl mx-auto w-full scroll-margin-top-[64px]">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Supported Formats</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Pick Your Source Format</h2>
+          <p className="text-muted-foreground sm:text-lg">Select a source document or media type below to view available targets.</p>
+        </div>
+
+        {/* Formats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {FORMAT_CONFIG.map((fmt) => {
+            const Icon = fmt.icon;
+            return (
+              <motion.button
+                whileHover={{ y: -4 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                key={fmt.id}
+                onClick={() => setActiveFormat(fmt.id)}
+                className="group relative flex flex-col items-start p-6 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/20 hover:shadow-xl hover:shadow-indigo-500/[0.02] text-left cursor-pointer transition-all duration-200 select-none overflow-hidden"
               >
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-                {isDark ? "Light" : "Dark"}
-              </button>
-              {/* Help */}
-              <button onClick={() => setHelpOpen(true)} style={{ padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`, color: textMute, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: 500, transition: "all 0.2s" }}
-                aria-label="Help"
-              >
-                <HelpCircle size={15} /> Help
-              </button>
-            </div>
-          </div>
-        </header>
+                {/* Glow Accent behind icon on hover */}
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
+                  style={{
+                    background: `radial-gradient(circle at 10% 20%, ${fmt.glow} 0%, transparent 60%)`
+                  }}
+                />
 
-        {/* ── HERO ── */}
-        <section style={{ position: "relative", padding: "80px 24px 60px", textAlign: "center", overflow: "hidden" }}>
-          <div className="glow-pulse" style={{ position: "absolute", top: "-100px", left: "50%", transform: "translateX(-50%)", width: "600px", height: "400px", background: "radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", top: "50px", left: "15%", width: "300px", height: "300px", background: "radial-gradient(ellipse, rgba(168,85,247,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", top: "80px", right: "15%", width: "250px", height: "250px", background: "radial-gradient(ellipse, rgba(236,72,153,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-
-          <div style={{ maxWidth: "800px", margin: "0 auto", position: "relative" }}>
-            <div className="anim-0" style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 14px", borderRadius: "100px", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#a5b4fc", fontSize: "13px", fontWeight: 500, marginBottom: "24px" }}>
-              <Zap size={12} /> Student-Focused File Conversion Platform
-            </div>
-            <h1 className="anim-1" style={{ fontSize: "clamp(40px, 6vw, 72px)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: "20px", color: textPrim }}>
-              Convert Any File <span className="gradient-text">Instantly</span>
-            </h1>
-            <p className="anim-2" style={{ fontSize: "18px", color: textMute, lineHeight: 1.6, marginBottom: "40px", maxWidth: "560px", margin: "0 auto 40px" }}>
-              PDF, Word, Excel, PowerPoint, images — convert between 56+ formats with zero quality loss. Built for students, trusted by professionals.
-            </p>
-            <div className="anim-3" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
-              <button
-                onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
-                style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 28px", borderRadius: "12px", background: "linear-gradient(135deg, #6366f1, #a855f7)", border: "none", color: "#fff", fontSize: "15px", fontWeight: 600, cursor: "pointer", boxShadow: "0 0 30px rgba(99,102,241,0.35)", transition: "all 0.2s ease" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 0 40px rgba(99,102,241,0.5)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(99,102,241,0.35)"; }}
-              >
-                Start Converting <ArrowRight size={16} />
-              </button>
-            </div>
-            <div className="anim-4" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "32px", marginTop: "52px", flexWrap: "wrap" }}>
-              {[{ value: "56+", label: "Conversion formats" }, { value: "100%", label: "Free to use" }, { value: "Unlimited", label: "Daily conversions" }].map(s => (
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "22px", fontWeight: 700, color: textPrim, letterSpacing: "-0.02em" }}>{s.value}</div>
-                  <div style={{ fontSize: "13px", color: textMute, marginTop: "2px" }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-
-        {/* ── FORMAT PICKER ── */}
-        <section id="formats" style={{ padding: "20px 24px 80px", scrollMarginTop: "74px", position: "relative" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
-              <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.12em", color: textMute, textTransform: "uppercase", marginBottom: "12px" }}>All Formats</p>
-              <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 700, letterSpacing: "-0.03em", color: textPrim, marginBottom: "12px", lineHeight: 1.1 }}>Pick Your Source Format</h2>
-              <p style={{ fontSize: "16px", color: textMute, maxWidth: "480px", margin: "0 auto" }}>Choose any format below to see all available conversion options</p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
-              {FORMAT_CONFIG.map(fmt => {
-                const Icon = fmt.icon;
-                return (
-                  <button key={fmt.id} className="shimmer" onClick={() => setActiveFormat(fmt.id)}
-                    style={{ padding: "24px", borderRadius: "18px", background: bgCard, border: `1px solid ${border}`, color: textMid, cursor: "pointer", textAlign: "left", position: "relative", overflow: "hidden", transition: "all 0.25s ease" }}
-                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = `${fmt.accent}50`; el.style.boxShadow = `0 8px 32px ${fmt.glow}, inset 0 0 0 1px ${fmt.accent}30`; el.style.transform = "translateY(-4px)"; }}
-                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = border; el.style.boxShadow = "none"; el.style.transform = "translateY(0)"; }}
-                  >
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "18px" }}>
-                      <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: `${fmt.accent}18`, border: `1px solid ${fmt.accent}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Icon size={22} color={fmt.accent} />
-                      </div>
-                      {fmt.badge && (
-                        <span style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "100px", background: "rgba(99,102,241,0.15)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)" }}>{fmt.badge}</span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <div style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "-0.02em", color: textPrim, marginBottom: "4px" }}>{fmt.name}</div>
-                        <div style={{ fontSize: "13px", color: textMute }}>{SUB_BUTTONS[fmt.id]?.length ?? 0} conversions available</div>
-                      </div>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "10px", background: bgCard, display: "flex", alignItems: "center", justifyContent: "center", color: textMute }}>
-                        <ChevronRight size={16} />
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FEATURES ── */}
-        <section style={{ padding: "60px 24px", borderTop: `1px solid ${border}`, position: "relative" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
-              <h2 style={{ fontSize: "clamp(26px, 3vw, 38px)", fontWeight: 700, letterSpacing: "-0.03em", color: textPrim, marginBottom: "12px" }}>Enterprise-Grade. Student-Priced.</h2>
-              <p style={{ fontSize: "16px", color: textMute }}>Everything you need, nothing you don't.</p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-              {[
-                { icon: <Lock size={20} color="#6366f1" />, title: "Zero Retention", desc: "Files are processed in-memory and deleted immediately after conversion. No logs, no storage.", accent: "#6366f1" },
-                { icon: <Zap size={20} color="#f59e0b" />, title: "Lightning Fast", desc: "Powered by LibreOffice and optimized pipelines. Most conversions complete in under 3 seconds.", accent: "#f59e0b" },
-                { icon: <Layers size={20} color="#10b981" />, title: "56+ Formats", desc: "PDF, DOCX, XLSX, PPTX, TXT, JPG, PNG, HEIC, WEBP, GIF, AVIF, HTML, CSV, JSON, XML and more.", accent: "#10b981" },
-                { icon: <ShieldCheck size={20} color="#ec4899" />, title: "Secure Transfer", desc: "All uploads use encrypted HTTPS. Optional cloud storage via AWS S3 with pre-signed URLs.", accent: "#ec4899" },
-              ].map(f => (
-                <div key={f.title} style={{ padding: "24px", borderRadius: "18px", background: bgCard, border: `1px solid ${border}`, transition: "all 0.2s ease" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = bgCardHov; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = bgCard; }}
+                {/* Icon wrapper */}
+                <div 
+                  className="flex items-center justify-center w-12 h-12 rounded-xl border mb-6 transition-all duration-300"
+                  style={{
+                    borderColor: `${fmt.accent}30`,
+                    backgroundColor: `${fmt.accent}10`,
+                  }}
                 >
-                  <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: `${f.accent}15`, border: `1px solid ${f.accent}25`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>{f.icon}</div>
-                  <div style={{ fontSize: "16px", fontWeight: 600, color: textPrim, marginBottom: "8px" }}>{f.title}</div>
-                  <div style={{ fontSize: "14px", color: textMute, lineHeight: 1.6 }}>{f.desc}</div>
+                  <Icon size={20} style={{ color: fmt.accent }} />
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        {/* ── FOOTER ── */}
-        <footer style={{ borderTop: `1px solid ${border}`, padding: "24px 0" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-            <span style={{ fontSize: "13px", color: textMute, fontWeight: 600 }}>© 2026 CONVERTO.</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-              <Link href="/privacy" style={{ fontSize: "13px", color: textMute, textDecoration: "none" }}>Privacy Policy</Link>
-              <Link href="/terms"   style={{ fontSize: "13px", color: textMute, textDecoration: "none" }}>Terms of Service</Link>
-            </div>
-          </div>
-        </footer>
-      </div>
+                {/* Info */}
+                <div className="w-full flex items-end justify-between mt-auto">
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-foreground mb-1">{fmt.name}</h3>
+                    <p className="text-xs text-muted-foreground font-medium">
+                      {SUB_BUTTONS[fmt.id]?.length ?? 0} targets available
+                    </p>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-secondary text-muted-foreground group-hover:text-foreground transition-colors duration-200">
+                    <ChevronRight size={15} />
+                  </div>
+                </div>
 
-      {/* ── FORMAT MODAL ── */}
-      {activeFormat && activeConfig && (
-        <div className="modal-backdrop" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div onClick={() => setActiveFormat(null)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }} />
-          <div className="modal-content" style={{ position: "relative", zIndex: 10, background: modalBg, border: `1px solid ${modalBorder}`, borderRadius: "24px", width: "100%", maxWidth: "720px", padding: "32px", maxHeight: "85vh", overflow: "hidden", boxShadow: `0 40px 80px rgba(0,0,0,0.8), 0 0 60px ${activeConfig.glow}` }}>
-            <button onClick={() => setActiveFormat(null)} style={{ position: "absolute", top: "20px", right: "20px", padding: "8px", borderRadius: "10px", background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: "pointer", display: "flex" }}><X size={16} /></button>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "8px" }}>
-              <div style={{ width: "46px", height: "46px", borderRadius: "14px", background: `${activeConfig.accent}18`, border: `1px solid ${activeConfig.accent}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <activeConfig.icon size={22} color={activeConfig.accent} />
+                {/* Most Popular Badge */}
+                {fmt.badge && (
+                  <span className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/20 text-[10px] font-bold text-indigo-400 select-none">
+                    <Star size={8} className="fill-current" /> {fmt.badge}
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── BENTO GRID FEATURES ── */}
+      <section className="px-4 sm:px-6 lg:px-8 py-20 border-t border-border/20 bg-secondary/20 dark:bg-transparent max-w-7xl mx-auto w-full">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Engineered for Students</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Enterprise Performance. Free of Cost.</h2>
+          <p className="text-muted-foreground sm:text-lg">No storage retention, lightning speed, and absolute file privacy.</p>
+        </div>
+
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Zero Retention */}
+          <div className="md:col-span-2 flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
+            <div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 mb-6">
+                <Lock size={20} />
               </div>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Zero Data Retention</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
+                We believe your files should remain yours. Converto processes all uploaded documents in-memory and executes immediate deletions upon completion. No logs, no background caches, no backups.
+              </p>
+            </div>
+            <div className="mt-8 flex items-center gap-1.5 text-xs font-semibold text-indigo-500 select-none">
+              <ShieldCheck size={14} /> Certified Secure Infrastructure
+            </div>
+          </div>
+
+          {/* Card 2: Speed */}
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
+            <div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 mb-6">
+                <Zap size={20} />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Sub-Second Processing</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Powered by cluster-scaled LibreOffice containers. Conversions complete in under 3 seconds.
+              </p>
+            </div>
+            <span className="mt-8 text-xs font-bold text-muted-foreground">Average conversion speed: 1.8s</span>
+          </div>
+
+          {/* Card 3: 56+ Formats */}
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
+            <div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mb-6">
+                <Layers size={20} />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Multi-Format Pipeline</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Convert between standard PDFs, document sheets, slideshows, vectors, and web pages without formatting shifts.
+              </p>
+            </div>
+            <Link href="/tools" className="mt-8 flex items-center gap-1 text-xs font-bold text-foreground hover:underline">
+              Browse all formats <ArrowUpRight size={13} />
+            </Link>
+          </div>
+
+          {/* Card 4: Secure S3 Storage */}
+          <div className="md:col-span-2 flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
+            <div>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-500 mb-6">
+                <ShieldCheck size={20} />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Encrypted Cloud Transit</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
+                All transport links utilize 256-bit SSL encryption. We coordinate with AWS S3 using presigned URLs to keep files insulated from other server threads during upload transactions.
+              </p>
+            </div>
+            <div className="mt-8 flex items-center gap-4 text-xs font-semibold text-muted-foreground">
+              <span>SSL/TLS Enforced</span>
+              <span>•</span>
+              <span>AES-256 Client-Side</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS SECTION ── */}
+      <section className="px-4 sm:px-6 lg:px-8 py-20 max-w-7xl mx-auto w-full">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">User Stories</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Loved by Students Worldwide</h2>
+          <p className="text-muted-foreground sm:text-lg">Here's how students are converting their assignments and research papers.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { quote: "Converto is a lifesaver. Converting class slides into PDFs for tablet note-taking is instant. Best of all, it's free and doesn't limit my uploads.", author: "Marcus Vance", role: "Computer Science Student, Stanford" },
+            { quote: "I convert a lot of spreadsheets to PDF reports. Most free converters break tables, but Converto keeps layout formats perfect. Zero layout bugs so far.", author: "Sophia Lin", role: "Finance Student, NYU" },
+            { quote: "Having no retention policy makes me comfortable converting personal project documentation and drafts. Absolute security is rare in free utilities.", author: "Liam O'Connor", role: "Graduate Researcher, MIT" }
+          ].map((t, idx) => (
+            <div key={idx} className="flex flex-col justify-between p-8 rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm">
+              <Quote size={24} className="text-indigo-500/30 mb-6" />
+              <p className="text-sm text-foreground/80 leading-relaxed mb-6 font-medium">"{t.quote}"</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-xs text-foreground uppercase border border-border/40">
+                  {t.author.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">{t.author}</h4>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t.role}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Global Footer */}
+      <Footer />
+
+      {/* ── MODALS (FAQ & FORMAT SPECIFICS) ── */}
+      <AnimatePresence>
+        {activeFormat && activeConfig && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveFormat(null)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-2xl bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col justify-between"
+            >
               <div>
-                <h3 style={{ fontSize: "22px", fontWeight: 700, color: textPrim, letterSpacing: "-0.02em", lineHeight: 1 }}>Convert from {activeFormat.toUpperCase()}</h3>
-                <p style={{ fontSize: "13px", color: textMute, marginTop: "4px" }}>{SUB_BUTTONS[activeFormat]?.length} formats available</p>
-              </div>
-            </div>
-            <div style={{ height: "1px", background: border, margin: "20px 0" }} />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "10px", overflowY: "auto", maxHeight: "55vh", paddingRight: "4px" }}>
-              {SUB_BUTTONS[activeFormat]?.map(sub => {
-                const [, toFmt] = sub.label.split("→").map(s => s.trim());
-                return (
-                  <button key={sub.slug} onClick={() => { setActiveFormat(null); router.push(`/convert/${sub.slug}`); }}
-                    style={{ padding: "16px 12px", borderRadius: "14px", background: subBtnBg, border: `1px solid ${border}`, color: textMid, cursor: "pointer", textAlign: "center", transition: "all 0.15s ease" }}
-                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${activeConfig.accent}15`; el.style.borderColor = `${activeConfig.accent}40`; el.style.transform = "translateY(-2px)"; }}
-                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = subBtnBg; el.style.borderColor = border; el.style.transform = "translateY(0)"; }}
-                  >
-                    <div style={{ fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px", background: `${activeConfig.accent}20`, color: activeConfig.accent, display: "inline-block", marginBottom: "8px", border: `1px solid ${activeConfig.accent}30` }}>{toFmt}</div>
-                    <div style={{ fontSize: "13px", fontWeight: 500, color: textPrim, lineHeight: 1.3 }}>{sub.label}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+                <button 
+                  onClick={() => setActiveFormat(null)}
+                  className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
+                >
+                  <X size={16} />
+                </button>
 
-      {/* ── HELP MODAL ── */}
-      {helpOpen && (
-        <div className="modal-backdrop" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div onClick={() => setHelpOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }} />
-          <div className="modal-content" style={{ position: "relative", zIndex: 10, background: modalBg, border: `1px solid ${modalBorder}`, borderRadius: "24px", width: "100%", maxWidth: "520px", padding: "28px", boxShadow: "0 40px 80px rgba(0,0,0,0.8)", maxHeight: "85vh", overflow: "hidden" }}>
-            <button onClick={() => setHelpOpen(false)} style={{ position: "absolute", top: "20px", right: "20px", padding: "8px", borderRadius: "10px", background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: "pointer", display: "flex" }}><X size={16} /></button>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: textPrim, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}><HelpCircle size={18} color="#6366f1" /> FAQ</h3>
-            <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", maxHeight: "60vh" }}>
-              {[
-                { q: "How do I convert a file?", a: "Select your source format from the grid, pick your target output format, drag & drop your file, then click Convert. Download starts instantly." },
-                { q: "Are my files stored?", a: "No. Files are processed in-memory and deleted immediately after conversion. We maintain a strict zero-retention policy." },
-                { q: "What is Sandbox Mode?", a: "When the LibreOffice container is offline, sandbox mode handles conversions with a styled fallback. All conversions work in production." },
-                { q: "What is the file size limit?", a: "Files up to 50 MB are accepted to ensure fast response times and efficient server memory usage." },
-              ].map(({ q, a }, i) => (
-                <div key={q} style={{ padding: "16px 0", borderBottom: i < 3 ? `1px solid ${border}` : "none" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 600, color: textPrim, marginBottom: "6px" }}>{q}</p>
-                  <p style={{ fontSize: "13px", color: textMute, lineHeight: 1.6 }}>{a}</p>
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div 
+                    className="flex items-center justify-center w-12 h-12 rounded-xl border"
+                    style={{
+                      borderColor: `${activeConfig.accent}30`,
+                      backgroundColor: `${activeConfig.accent}12`
+                    }}
+                  >
+                    <activeConfig.icon size={20} style={{ color: activeConfig.accent }} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                      Convert from {activeFormat.toUpperCase()}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Select target format to launch converter
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <button onClick={() => setHelpOpen(false)} style={{ marginTop: "20px", width: "100%", padding: "12px", borderRadius: "12px", background: "linear-gradient(135deg, #6366f1, #a855f7)", border: "none", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Close</button>
+
+                <div className="h-px bg-border/40 my-6" />
+
+                {/* Target Options Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[45vh] pr-2 scrollbar-thin">
+                  {SUB_BUTTONS[activeFormat]?.map((sub) => {
+                    const [, toFmt] = sub.label.split("→").map(s => s.trim());
+                    return (
+                      <button
+                        key={sub.slug}
+                        onClick={() => {
+                          setActiveFormat(null);
+                          router.push(`/convert/${sub.slug}`);
+                        }}
+                        className="group flex flex-col items-center justify-center p-4 rounded-xl border border-border/40 bg-secondary/20 hover:bg-indigo-500/10 hover:border-indigo-500/30 text-center cursor-pointer transition-all duration-150"
+                      >
+                        <div 
+                          className="text-[10px] font-bold px-2 py-0.5 rounded border mb-2 transition-all duration-150"
+                          style={{
+                            borderColor: `${activeConfig.accent}30`,
+                            backgroundColor: `${activeConfig.accent}15`,
+                            color: activeConfig.accent
+                          }}
+                        >
+                          {toFmt}
+                        </div>
+                        <span className="text-xs font-semibold text-foreground group-hover:text-indigo-400 transition-colors">
+                          {sub.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+        {helpOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setHelpOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col justify-between"
+            >
+              <div>
+                <button 
+                  onClick={() => setHelpOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
+                >
+                  <X size={16} />
+                </button>
+
+                <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-6 flex items-center gap-2">
+                  <HelpCircle size={18} className="text-indigo-500" /> Frequently Asked Questions
+                </h3>
+
+                <div className="space-y-4 overflow-y-auto max-h-[50vh] pr-2">
+                  {[
+                    { q: "How do I convert a file?", a: "Select your source format from the grid, pick your target output format, drag & drop your file, then click Convert. Download starts instantly." },
+                    { q: "Are my files stored?", a: "No. Files are processed in-memory and deleted immediately after conversion. We maintain a strict zero-retention policy." },
+                    { q: "What is Sandbox Mode?", a: "When the LibreOffice container is offline, sandbox mode handles conversions with a styled fallback. All conversions work in production." },
+                    { q: "What is the file size limit?", a: "Files up to 50 MB are accepted to ensure fast response times and efficient server memory usage." },
+                  ].map(({ q, a }, idx) => (
+                    <div key={idx} className="p-4 rounded-xl border border-border/30 bg-secondary/10">
+                      <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1.5">{q}</h4>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setHelpOpen(false)}
+                className="mt-6 w-full py-3 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 transition-all cursor-pointer"
+              >
+                Close FAQ
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 }

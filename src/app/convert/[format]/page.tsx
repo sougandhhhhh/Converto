@@ -2,16 +2,18 @@
 
 import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Button } from "@/components/ui/button";
 import {
   HelpCircle, ArrowLeft, UploadCloud, FileText,
   X, RefreshCw, CheckCircle2, AlertCircle,
-  Plus, Database, ShieldCheck, Download, Zap, Sun, Moon,
+  Plus, Download, Zap
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConvert } from "@/hooks/useConvert";
 import { useTheme } from "@/components/ThemeProvider";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MIME_TYPES: Record<string, string[]> = {
   ".pdf":  ["application/pdf"],
@@ -53,7 +55,6 @@ function getConfigForSlug(slug: string) {
   const from = `.${fromExt}`;
   const to   = `.${toExt}`;
 
-  // Accent color per source format
   const accentMap: Record<string, string> = {
     pdf: "#ef4444", docx: "#8b5cf6", doc: "#8b5cf6", pptx: "#ec4899",
     xlsx: "#10b981", xls: "#10b981", csv: "#10b981", txt: "#3b82f6",
@@ -79,115 +80,159 @@ function FileRow({ item, config, onRemove, forceConvert }: {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (forceConvert && status === "idle") convert(item.file, config.from, config.to);
   }, [forceConvert, status, convert, item.file, config.from, config.to]);
 
   const accent = config.accent ?? "#6366f1";
   const isProcessing = status === "uploading" || status === "converting";
 
-  const rowBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
-  const rowBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const nameColor = isDark ? '#f1f5f9' : '#0f172a';
-  const descColor = isDark ? '#94a3b8' : '#475569';
-  const closeBtnColor = isDark ? '#94a3b8' : '#475569';
-
   return (
-    <div style={{
-      background: rowBg,
-      border: status === 'done' ? '1px solid rgba(16,185,129,0.3)' : status === 'error' ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${rowBorder}`,
-      borderRadius: '16px',
-      padding: '20px',
-      position: 'relative',
-      overflow: 'hidden',
-      transition: 'all 0.2s ease',
-    }}>
-      {/* Progress bar */}
+    <motion.div 
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-200 ${
+        status === 'done' 
+          ? 'border-emerald-500/30 bg-emerald-500/[0.02]' 
+          : status === 'error' 
+            ? 'border-rose-500/30 bg-rose-500/[0.02]' 
+            : 'border-border/40 bg-card/60'
+      }`}
+    >
+      {/* Progress bar track */}
       {isProcessing && (
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.05)' }}>
-          <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, transition: 'width 0.3s ease', boxShadow: `0 0 8px ${accent}80` }} />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/30">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(progress, 100)}%` }}
+            className="h-full glow-box"
+            style={{
+              backgroundColor: accent,
+            }}
+          />
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-        {/* Left: icon + name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, flex: 1 }}>
-          <div style={{
-            width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
-            background: status === 'done' ? 'rgba(16,185,129,0.15)' : status === 'error' ? 'rgba(239,68,68,0.15)' : `${accent}18`,
-            border: status === 'done' ? '1px solid rgba(16,185,129,0.3)' : status === 'error' ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${accent}30`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {isProcessing ? <RefreshCw size={20} color={accent} style={{ animation: 'spin 1s linear infinite' }} /> :
-             status === 'done'  ? <CheckCircle2 size={20} color="#10b981" /> :
-             status === 'error' ? <AlertCircle size={20} color="#ef4444" /> :
-             <FileText size={20} color={accent} />}
+      {/* Row content */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+        {/* Left Section: Icon + Description */}
+        <div className="flex items-center gap-4 w-full sm:w-auto min-w-0">
+          <div 
+            className="flex items-center justify-center w-11 h-11 rounded-xl border flex-shrink-0 transition-colors"
+            style={{
+              borderColor: status === 'done' ? 'rgba(16,185,129,0.3)' : status === 'error' ? 'rgba(244,63,94,0.3)' : `${accent}30`,
+              backgroundColor: status === 'done' ? 'rgba(16,185,129,0.1)' : status === 'error' ? 'rgba(244,63,94,0.1)' : `${accent}10`,
+            }}
+          >
+            {isProcessing ? (
+              <RefreshCw size={18} style={{ color: accent }} className="animate-spin" />
+            ) : status === 'done' ? (
+              <CheckCircle2 size={18} className="text-emerald-500" />
+            ) : status === 'error' ? (
+              <AlertCircle size={18} className="text-rose-500" />
+            ) : (
+              <FileText size={18} style={{ color: accent }} />
+            )}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '14px', fontWeight: 600, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '260px' }}>
+
+          <div className="min-w-0 flex-1 sm:flex-initial">
+            <p className="text-sm font-semibold text-foreground truncate max-w-[240px] sm:max-w-[320px]">
               {status === 'done' ? item.file.name.replace(config.from, config.to) : item.file.name}
             </p>
-            <p style={{ fontSize: '12px', color: descColor, marginTop: '2px' }}>
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
               {isProcessing ? (
-                <span style={{ color: accent }}>{status === 'uploading' ? 'Uploading…' : `Converting to ${config.to.replace('.','').toUpperCase()}… ${Math.min(progress,100)}%`}</span>
+                <span style={{ color: accent }}>
+                  {status === 'uploading' ? 'Uploading...' : `Converting to ${config.to.toUpperCase().replace('.','')}... ${Math.min(progress, 100)}%`}
+                </span>
               ) : status === 'error' ? (
-                <span style={{ color: '#ef4444' }}>{error}</span>
+                <span className="text-rose-500 font-semibold">{error || "Conversion failed"}</span>
               ) : (
-                `${(item.file.size / (1024*1024)).toFixed(2)} MB`
+                `${(item.file.size / (1024 * 1024)).toFixed(2)} MB`
               )}
             </p>
           </div>
         </div>
 
-        {/* Right: actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-          {status === 'idle' && (
+        {/* Right Section: Buttons */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-shrink-0">
+          {status === "idle" && (
             <>
-              <button onClick={() => onRemove(item.id)} style={{ padding: '8px', borderRadius: '8px', background: 'transparent', border: 'none', color: closeBtnColor, cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = closeBtnColor; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-              ><X size={16} /></button>
-              <button onClick={() => convert(item.file, config.from, config.to)} style={{ padding: '8px 18px', borderRadius: '10px', background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', boxShadow: `0 4px 14px ${accent}40` }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
-              >Convert</button>
+              <button
+                onClick={() => onRemove(item.id)}
+                className="touch-target p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                aria-label="Remove file"
+              >
+                <X size={15} />
+              </button>
+              <button
+                onClick={() => convert(item.file, config.from, config.to)}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+                  boxShadow: `0 4px 12px ${accent}25`
+                }}
+              >
+                Convert
+              </button>
             </>
           )}
 
           {isProcessing && (
-            <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', background: `${accent}20`, color: accent, border: `1px solid ${accent}30`, fontWeight: 600 }}>
-              {Math.min(progress,100)}%
+            <span 
+              className="px-3 py-1 rounded-full text-[10px] font-bold border select-none"
+              style={{
+                borderColor: `${accent}30`,
+                backgroundColor: `${accent}10`,
+                color: accent
+              }}
+            >
+              {Math.min(progress, 100)}%
             </span>
           )}
 
-          {status === 'done' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 600 }}>Done ✓</span>
+          {status === "done" && (
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold select-none">
+                Done ✓
+              </span>
               {downloadUrl && (
-                <button onClick={() => {
-                  const a = document.createElement("a");
-                  a.href = downloadUrl;
-                  a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
-                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.25)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.15)'; }}
-                ><Download size={14} /> Download</button>
+                <button
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = downloadUrl;
+                    a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
+                >
+                  <Download size={13} /> Download
+                </button>
               )}
             </div>
           )}
 
-          {status === 'error' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button onClick={() => onRemove(item.id)} style={{ padding: '8px', borderRadius: '8px', background: 'transparent', border: 'none', color: closeBtnColor, cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
-              <button onClick={() => convert(item.file, config.from, config.to)} style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Retry</button>
+          {status === "error" && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onRemove(item.id)}
+                className="touch-target p-2 rounded-xl text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+              <button
+                onClick={() => convert(item.file, config.from, config.to)}
+                className="px-4 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-500 text-xs font-bold hover:bg-rose-500/25 transition-all cursor-pointer"
+              >
+                Retry
+              </button>
             </div>
           )}
         </div>
       </div>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </motion.div>
   );
 }
 
@@ -196,36 +241,22 @@ export default function ConvertPage() {
   const router = useRouter();
   const formatSlug = (params.format as string) || "docx-to-pdf";
   const config = getConfigForSlug(formatSlug);
-  const accent = (config as any).accent ?? "#6366f1";
+  const accent = config.accent ?? "#6366f1";
 
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === "dark";
-  const [helpOpen, setHelpOpen]         = useState(false);
-  const [files, setFiles]               = useState<FileItem[]>([]);
+  const { theme } = useTheme();
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [forceConvertAll, setForceConvertAll] = useState(false);
-  const [scrolled, setScrolled]         = useState(false);
-
-  // Theme-aware colors
-  const bg        = isDark ? "#080808" : "#f8fafc";
-  const bgCard    = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-  const border    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-  const textPrim  = isDark ? "#f8fafc" : "#0f172a";
-  const textMid   = isDark ? "#e2e8f0" : "#334155";
-  const textMute  = isDark ? "#475569" : "#64748b";
-  const navBg     = isDark ? "rgba(8,8,8,0.9)"   : "rgba(248,250,252,0.9)";
-  const navBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-  const modalBg   = isDark ? "#0f0f0f" : "#ffffff";
-  const modalBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      setFiles(prev => [...prev, ...acceptedFiles.map(file => ({ id: Math.random().toString(36).slice(7), file }))]);
+      setFiles(prev => [
+        ...prev,
+        ...acceptedFiles.map(file => ({
+          id: Math.random().toString(36).slice(7),
+          file
+        }))
+      ]);
       setForceConvertAll(false);
     }
   }, []);
@@ -239,173 +270,215 @@ export default function ConvertPage() {
   });
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        body { font-family: 'Inter', sans-serif !important; background: ${bg} !important; color: ${textMid} !important; transition: background 0.3s ease; }
-        ::-webkit-scrollbar { width: 6.5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); border-radius: 4px; }
-        .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        .modal-backdrop { animation: fadeIn 0.2s ease; }
-        .modal-content { animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1); }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-      `}</style>
+    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+      
+      {/* Global Navbar */}
+      <Navbar />
 
-      <div style={{ background: bg, minHeight: '100vh', display: 'flex', flexDirection: 'column', color: textMid, transition: 'background 0.3s ease' }}>
+      {/* Main Container */}
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Back Link */}
+        <Link 
+          href="/" 
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground mb-8 transition-colors"
+        >
+          <ArrowLeft size={13} /> Back to all tools
+        </Link>
 
-        {/* ── NAVBAR ── */}
-        <header style={{
-          position: 'sticky', top: 0, zIndex: 50,
-          background: scrolled ? navBg : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          borderBottom: scrolled ? `1px solid ${navBorder}` : '1px solid transparent',
-          transition: 'all 0.3s ease',
-        }}>
-          <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* Logo left */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span onClick={() => router.push('/')} style={{ cursor: 'pointer', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em', textDecoration: 'none' }}>
-                <span style={{ color: textPrim }}>Conver</span>
-                <span className="gradient-text">to</span>
-              </span>
-              <button onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s' }}>
-                <ArrowLeft size={13} /> Back
-              </button>
+        {/* Heading Panel */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center justify-center w-11 h-11 rounded-xl border flex-shrink-0"
+              style={{
+                borderColor: `${accent}30`,
+                backgroundColor: `${accent}10`,
+              }}
+            >
+              <FileText size={20} style={{ color: accent }} />
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* Visible theme toggle */}
-              <button onClick={toggleTheme}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`, color: textMid, cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-                {isDark ? 'Light' : 'Dark'}
-              </button>
-              <button onClick={() => setHelpOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`, color: textMute, cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-              ><HelpCircle size={18} /></button>
-            </div>
-          </div>
-        </header>
-
-        {/* ── MAIN ── */}
-        <main style={{ flex: 1, padding: '40px 24px 60px', maxWidth: '900px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-
-          {/* Page header */}
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `${accent}18`, border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FileText size={18} color={accent} />
-              </div>
-              <h1 style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 700, letterSpacing: '-0.03em', color: textPrim }}>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 {config.title}
               </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Convert your files securely with precision fallback mapping.
+              </p>
             </div>
-            <p style={{ fontSize: '14px', color: textMute, paddingLeft: '46px' }}>
-              Drop your {config.from.replace('.','').toUpperCase()} files below — convert individually or all at once
-            </p>
           </div>
 
-          {/* Dropzone + file list */}
-          <div {...getRootProps()} style={{ outline: 'none' }}>
-            <input {...getInputProps()} />
-
-            {files.length === 0 ? (
-              /* Empty dropzone */
-              <div style={{
-                border: `2px dashed ${isDragActive ? accent : border}`,
-                borderRadius: '20px',
-                padding: '64px 32px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', cursor: 'pointer', transition: 'all 0.25s ease',
-                background: isDragActive ? `${accent}08` : bgCard,
-                boxShadow: isDragActive ? `0 0 40px ${accent}15` : 'none',
-              }}
-                onMouseEnter={e => { if (files.length === 0) { (e.currentTarget as HTMLElement).style.borderColor = `${accent}60`; (e.currentTarget as HTMLElement).style.background = `${accent}06`; } }}
-                onMouseLeave={e => { if (!isDragActive) { (e.currentTarget as HTMLElement).style.borderColor = border; (e.currentTarget as HTMLElement).style.background = bgCard; } }}
-              >
-                <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: `${accent}15`, border: `1px solid ${accent}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', animation: isDragActive ? 'bounce 0.6s ease infinite' : 'none' }}>
-                  <UploadCloud size={32} color={accent} />
-                </div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: textPrim, marginBottom: '8px', letterSpacing: '-0.02em' }}>
-                  Drop your {config.from.replace('.','').toUpperCase()} files here
-                </h2>
-                <p style={{ fontSize: '14px', color: textMute, marginBottom: '20px' }}>or click anywhere to browse from your computer</p>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: bgCard, border: `1px solid ${border}`, color: textMute }}>Max 50 MB</span>
-                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: `${accent}15`, border: `1px solid ${accent}25`, color: accent }}>{config.from.replace('.','').toUpperCase()}</span>
-                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: bgCard, border: `1px solid ${border}`, color: textMute }}>Multiple files</span>
-                </div>
-              </div>
-            ) : (
-              /* Files list */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {isDragActive && (
-                  <div style={{ border: `2px dashed ${accent}`, borderRadius: '14px', padding: '20px', textAlign: 'center', background: `${accent}08` }}>
-                    <UploadCloud size={22} color={accent} style={{ margin: '0 auto 6px', display: 'block', animation: 'bounce 0.6s ease infinite' }} />
-                    <p style={{ fontSize: '14px', color: accent, fontWeight: 600 }}>Drop more files here…</p>
-                  </div>
-                )}
-
-                {files.map(item => (
-                  <FileRow key={item.id} item={item} config={config} onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))} forceConvert={forceConvertAll} />
-                ))}
-
-                {!isDragActive && (
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                    <button onClick={e => { e.stopPropagation(); open(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '14px', background: bgCard, border: `1px dashed ${border}`, color: textMute, cursor: 'pointer', fontSize: '14px', fontWeight: 500, transition: 'all 0.2s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = `${accent}50`; (e.currentTarget as HTMLElement).style.color = accent; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = border; (e.currentTarget as HTMLElement).style.color = textMute; }}
-                    ><Plus size={16} /> Add more files</button>
-                    <button onClick={e => { e.stopPropagation(); setForceConvertAll(true); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '14px', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'all 0.2s', boxShadow: `0 4px 20px ${accent}35` }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
-                    ><Zap size={16} /> Convert All</button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </main>
-
-        {/* ── FOOTER ── */}
-        <footer style={{ borderTop: `1px solid ${border}`, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: textMute, fontWeight: 600 }}>© 2026 CONVERTO.</span>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <Link href="/privacy" style={{ fontSize: '13px', color: textMute, textDecoration: 'none' }}>Privacy Policy</Link>
-            <Link href="/terms"   style={{ fontSize: '13px', color: textMute, textDecoration: 'none' }}>Terms of Service</Link>
-          </div>
-        </footer>
-      </div>
-
-      {/* ── HELP MODAL ── */}
-      {helpOpen && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div onClick={() => setHelpOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }} />
-          <div className="modal-content" style={{ position: 'relative', zIndex: 10, background: modalBg, border: `1px solid ${modalBorder}`, borderRadius: '24px', width: '100%', maxWidth: '520px', padding: '28px', boxShadow: '0 40px 80px rgba(0,0,0,0.8)', maxHeight: '85vh', overflow: 'hidden' }}>
-            <button onClick={() => setHelpOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', padding: '8px', borderRadius: '10px', background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: textPrim, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><HelpCircle size={18} color="#6366f1" /> FAQ</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', maxHeight: '60vh' }}>
-              {[
-                { q: 'How do I convert a file?', a: 'Drop or browse your file into the upload zone above, then click Convert. Download starts instantly when done.' },
-                { q: 'Are my files stored?', a: 'No — files are processed in-memory and deleted immediately after conversion. Zero retention.' },
-                { q: 'What is Sandbox Mode?', a: 'When Gotenberg is offline, our sandbox gracefully handles conversions with a metadata fallback. All formats work in production.' },
-                { q: 'File size limit?', a: 'Files up to 50 MB per upload are accepted.' },
-              ].map(({ q, a }, i) => (
-                <div key={q} style={{ padding: '16px 0', borderBottom: i < 3 ? `1px solid ${border}` : 'none' }}>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: textPrim, marginBottom: '6px' }}>{q}</p>
-                  <p style={{ fontSize: '13px', color: textMute, lineHeight: 1.6 }}>{a}</p>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setHelpOpen(false)} style={{ marginTop: '20px', width: '100%', padding: '12px', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Close</button>
-          </div>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="flex items-center justify-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground touch-target"
+          >
+            <HelpCircle size={15} /> Help
+          </button>
         </div>
-      )}
-    </>
+
+        {/* Converter Area */}
+        <div {...getRootProps()} className="outline-none">
+          <input {...getInputProps()} />
+
+          {files.length === 0 ? (
+            /* Dropzone Empty State */
+            <div 
+              className={`animated-dashed-border flex flex-col items-center justify-center text-center p-12 sm:p-20 rounded-3xl cursor-pointer transition-all duration-300 select-none ${
+                isDragActive ? 'bg-indigo-500/[0.03]' : 'bg-card/50'
+              }`}
+            >
+              <div 
+                className="flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 transition-all duration-300"
+                style={{
+                  borderColor: isDragActive ? accent : 'var(--border)',
+                  backgroundColor: `${accent}10`,
+                }}
+              >
+                <UploadCloud size={28} style={{ color: accent }} className={isDragActive ? "animate-bounce" : ""} />
+              </div>
+
+              <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight mb-2">
+                Drag & drop your {config.from.toUpperCase().replace('.','')} file here
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mb-8">
+                or click anywhere on this card to browse files from your local storage.
+              </p>
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
+                  Max 50 MB
+                </span>
+                <span 
+                  className="px-3 py-1 rounded-full border text-[10px] font-bold"
+                  style={{
+                    borderColor: `${accent}30`,
+                    backgroundColor: `${accent}12`,
+                    color: accent
+                  }}
+                >
+                  {config.from.toUpperCase().replace('.','')} Source
+                </span>
+                <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
+                  Batch Allowed
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* File rows listing */
+            <div className="space-y-4">
+              {isDragActive && (
+                <div className="animated-dashed-border p-8 rounded-2xl text-center bg-indigo-500/[0.02]">
+                  <UploadCloud size={20} style={{ color: accent }} className="mx-auto mb-2 animate-bounce" />
+                  <p className="text-xs font-bold text-indigo-500">Drop your additional files here...</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {files.map(item => (
+                    <FileRow 
+                      key={item.id} 
+                      item={item} 
+                      config={config} 
+                      onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))} 
+                      forceConvert={forceConvertAll} 
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {/* Conversion Buttons row */}
+              {!isDragActive && (
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    className="flex items-center justify-center gap-1.5 w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border/40 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all duration-150"
+                  >
+                    <Plus size={15} /> Add More Files
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setForceConvertAll(true);
+                    }}
+                    className="flex items-center justify-center gap-1.5 w-full sm:w-1/2 py-3 px-5 rounded-2xl text-sm font-bold text-white shadow-lg cursor-pointer transition-all duration-150 hover:opacity-95 hover:scale-[1.01] active:scale-[0.99]"
+                    style={{
+                      background: `linear-gradient(135deg, ${accent}, ${accent}dd)`,
+                      boxShadow: `0 8px 24px ${accent}25`
+                    }}
+                  >
+                    <Zap size={15} /> Convert All
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Global Footer */}
+      <Footer />
+
+      {/* FAQ Modal */}
+      <AnimatePresence>
+        {helpOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setHelpOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col justify-between"
+            >
+              <div>
+                <button 
+                  onClick={() => setHelpOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
+                >
+                  <X size={16} />
+                </button>
+
+                <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-6 flex items-center gap-2">
+                  <HelpCircle size={18} className="text-indigo-500" /> FAQ & Guidance
+                </h3>
+
+                <div className="space-y-4 overflow-y-auto max-h-[50vh] pr-2">
+                  {[
+                    { q: "How do I convert a file?", a: "Select your source format from the grid, pick your target output format, drag & drop your file, then click Convert. Download starts instantly." },
+                    { q: "Are my files stored?", a: "No. Files are processed in-memory and deleted immediately after conversion. We maintain a strict zero-retention policy." },
+                    { q: "What is Sandbox Mode?", a: "When the LibreOffice container is offline, sandbox mode handles conversions with a styled fallback. All conversions work in production." },
+                    { q: "What is the file size limit?", a: "Files up to 50 MB are accepted to ensure fast response times and efficient server memory usage." },
+                  ].map(({ q, a }, idx) => (
+                    <div key={idx} className="p-4 rounded-xl border border-border/30 bg-secondary/10">
+                      <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1.5">{q}</h4>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">{a}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setHelpOpen(false)}
+                className="mt-6 w-full py-3 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 transition-all cursor-pointer"
+              >
+                Close FAQ
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 }
