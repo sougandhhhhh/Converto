@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { marked } from "marked";
 import sharp from "sharp";
 import PDFDocument from "pdfkit";
+import mammoth from "mammoth";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -279,22 +280,46 @@ export async function POST(req: NextRequest) {
       const textContent = `CONVERTO conversion output\nFile Name: ${file.name}\nSource Format: ${format.toUpperCase()}\nConverted to: TXT\nTimestamp: ${new Date().toISOString()}\nSize: ${file.size} bytes\n\n[Content processed successfully]`;
       outputBuffer = Buffer.from(textContent, "utf-8");
     } else if (to === ".html") {
+      let htmlBody = "";
+      if (format === ".txt") {
+        const textStr = buffer.toString("utf-8");
+        const escapedText = textStr
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+        htmlBody = `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.5; color: #e6e0e9;">${escapedText}</pre>`;
+      } else if (format === ".docx" || format === ".doc") {
+        try {
+          const result = await mammoth.convertToHtml({ buffer });
+          htmlBody = result.value || `<p style="color: #cbc4d2;">[Empty Document]</p>`;
+        } catch (err: any) {
+          htmlBody = `<p style="color: #ffb4ab;">Error parsing DOCX file content: ${err.message}</p>`;
+        }
+      } else {
+        htmlBody = `<h1>${file.name}</h1>
+    <p>Your document was successfully converted to HTML format by Converto.</p>`;
+      }
+
       const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <title>${file.name} - Converted</title>
   <style>
-    body { font-family: Verdana, sans-serif; background-color: #141218; color: #e6e0e9; padding: 40px; display: flex; justify-content: center; }
-    .card { background-color: #211f24; border: 1px solid #494551; border-radius: 12px; padding: 30px; max-width: 600px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-    h1 { color: #cfbcff; margin-bottom: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #141218; color: #e6e0e9; padding: 40px; display: flex; justify-content: center; }
+    .card { background-color: #211f24; border: 1px solid #494551; border-radius: 12px; padding: 30px; max-width: 800px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    h1 { color: #cfbcff; margin-bottom: 20px; font-size: 24px; }
     p { color: #cbc4d2; line-height: 1.6; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; margin-bottom: 15px; }
+    th, td { border: 1px solid #494551; padding: 8px; text-align: left; }
+    th { background-color: #2b2930; color: #cfbcff; }
     .meta { margin-top: 30px; border-top: 1px solid #494551; padding-top: 20px; font-size: 12px; color: #948e9c; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>${file.name}</h1>
-    <p>Your document was successfully converted to HTML format by Converto.</p>
+    ${htmlBody}
     <div class="meta">
       Original Format: ${format.toUpperCase()}<br>
       Target Format: HTML<br>
