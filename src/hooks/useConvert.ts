@@ -44,11 +44,12 @@ export function useConvert(): UseConvertResult {
 
       if (!response.ok) {
         let errMessage = "Unknown conversion error";
+        const text = await response.text();
         try {
-          const errData = await response.json();
+          const errData = JSON.parse(text);
           errMessage = errData.details || errData.error || errMessage;
         } catch {
-          errMessage = await response.text() || errMessage;
+          errMessage = text || errMessage;
         }
         throw new Error(errMessage);
       }
