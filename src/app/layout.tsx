@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Converto - Universal File Converter",
-  description: "Convert PDFs, images, documents, and spreadsheets in seconds.",
+  title: "Converto — Precision Document Conversion",
+  description: "Transform your documents with zero fidelity loss. Convert PDFs, images, spreadsheets, and more.",
 };
 
 export default function RootLayout({
@@ -45,7 +45,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-white dark:bg-[#141218] text-[#1c1b1f] dark:text-[#e6e0e9]">
+      <body className="min-h-full flex flex-col bg-[#080808]">
         <Provider>
           <ThemeProvider>
             {children}

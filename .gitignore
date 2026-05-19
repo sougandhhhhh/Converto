@@ -40,3 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /backup
+
+# temporary files and snapshots
+*.zip
+temp_snapshot/
+test.docx
+pnpm-lock.yaml
+pnpm-workspace.yaml

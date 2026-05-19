@@ -3,25 +3,10 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { 
-  Settings, 
-  HelpCircle, 
-  ArrowLeft, 
-  UploadCloud, 
-  FileText, 
-  X, 
-  ArrowRight, 
-  RefreshCw, 
-  CheckCircle2, 
-  Eye, 
-  Plus, 
-  AlertCircle,
-  Sun,
-  Moon,
-  Database,
-  HardDrive,
-  ShieldCheck,
-  HelpCircle as QuestionIcon
+import {
+  HelpCircle, ArrowLeft, UploadCloud, FileText,
+  X, RefreshCw, CheckCircle2, AlertCircle,
+  Plus, Database, ShieldCheck, Download, Zap, Sun, Moon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,184 +14,179 @@ import { useConvert } from "@/hooks/useConvert";
 import { useTheme } from "@/components/ThemeProvider";
 
 const MIME_TYPES: Record<string, string[]> = {
-  ".pdf": ["application/pdf"],
+  ".pdf":  ["application/pdf"],
   ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  ".doc": ["application/msword"],
+  ".doc":  ["application/msword"],
   ".pptx": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
-  ".ppt": ["application/vnd.ms-powerpoint"],
+  ".ppt":  ["application/vnd.ms-powerpoint"],
   ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-  ".xls": ["application/vnd.ms-excel"],
-  ".csv": ["text/csv"],
-  ".txt": ["text/plain"],
-  ".jpg": ["image/jpeg"],
+  ".xls":  ["application/vnd.ms-excel"],
+  ".csv":  ["text/csv"],
+  ".txt":  ["text/plain"],
+  ".jpg":  ["image/jpeg"],
   ".jpeg": ["image/jpeg"],
-  ".png": ["image/png"],
+  ".png":  ["image/png"],
   ".webp": ["image/webp"],
   ".heic": ["image/heic"],
   ".html": ["text/html"],
-  ".md": ["text/markdown"],
-  ".zip": ["application/zip"],
-  ".odt": ["application/vnd.oasis.opendocument.text"],
-  ".ods": ["application/vnd.oasis.opendocument.spreadsheet"],
-  ".gif": ["image/gif"],
+  ".md":   ["text/markdown"],
+  ".zip":  ["application/zip"],
+  ".odt":  ["application/vnd.oasis.opendocument.text"],
+  ".ods":  ["application/vnd.oasis.opendocument.spreadsheet"],
+  ".gif":  ["image/gif"],
 };
 
 function getConfigForSlug(slug: string) {
   let targetSlug = slug;
-  if (slug === "word-to-pdf") targetSlug = "docx-to-pdf";
+  if (slug === "word-to-pdf")  targetSlug = "docx-to-pdf";
   if (slug === "excel-to-pdf") targetSlug = "xlsx-to-pdf";
-  if (slug === "ppt-to-pdf") targetSlug = "pptx-to-pdf";
-  if (slug === "jpg-to-pdf") targetSlug = "jpg-to-pdf";
-  if (slug === "pdf-to-word") targetSlug = "pdf-to-docx";
+  if (slug === "ppt-to-pdf")   targetSlug = "pptx-to-pdf";
+  if (slug === "jpg-to-pdf")   targetSlug = "jpg-to-pdf";
+  if (slug === "pdf-to-word")  targetSlug = "pdf-to-docx";
 
   const parts = targetSlug.split("-to-");
   if (parts.length !== 2) {
-    return {
-      title: "DOCX to PDF",
-      from: ".docx",
-      to: ".pdf",
-      accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] }
-    };
+    return { title: "DOCX to PDF", from: ".docx", to: ".pdf", accent: "#8b5cf6", accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] } };
   }
 
   const [fromExt, toExt] = parts;
   const from = `.${fromExt}`;
-  const to = `.${toExt}`;
+  const to   = `.${toExt}`;
+
+  // Accent color per source format
+  const accentMap: Record<string, string> = {
+    pdf: "#ef4444", docx: "#8b5cf6", doc: "#8b5cf6", pptx: "#ec4899",
+    xlsx: "#10b981", xls: "#10b981", csv: "#10b981", txt: "#3b82f6",
+    jpg: "#f59e0b", jpeg: "#f59e0b", png: "#6366f1", webp: "#f59e0b",
+    heic: "#64748b", html: "#06b6d4", gif: "#f59e0b",
+  };
+  const accent = accentMap[fromExt] ?? "#6366f1";
 
   const acceptTypes = MIME_TYPES[from] || ["*/*"];
   const accept: Record<string, string[]> = {};
   accept[acceptTypes[0]] = [from];
+  if (from === ".jpg") accept["image/jpeg"] = [".jpg", ".jpeg"];
 
-  if (from === ".jpg") {
-    accept["image/jpeg"] = [".jpg", ".jpeg"];
-  }
-
-  return {
-    title: `${fromExt.toUpperCase()} to ${toExt.toUpperCase()}`,
-    from,
-    to,
-    accept
-  };
+  return { title: `${fromExt.toUpperCase()} to ${toExt.toUpperCase()}`, from, to, accept, accent };
 }
 
-interface FileItem {
-  id: string;
-  file: File;
-}
+interface FileItem { id: string; file: File; }
 
-// Sub-component to handle individual file conversion state using the hook
-function FileRow({ item, config, onRemove, forceConvert }: { item: FileItem, config: any, onRemove: (id: string) => void, forceConvert: boolean }) {
+function FileRow({ item, config, onRemove, forceConvert }: {
+  item: FileItem; config: any; onRemove: (id: string) => void; forceConvert: boolean;
+}) {
   const { convert, status, error, progress, downloadUrl } = useConvert();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
-  // Trigger conversion when 'Convert All' is pressed at the parent level
   React.useEffect(() => {
-    if (forceConvert && status === "idle") {
-      convert(item.file, config.from, config.to);
-    }
+    if (forceConvert && status === "idle") convert(item.file, config.from, config.to);
   }, [forceConvert, status, convert, item.file, config.from, config.to]);
 
+  const accent = config.accent ?? "#6366f1";
+  const isProcessing = status === "uploading" || status === "converting";
+
+  const rowBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+  const rowBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const nameColor = isDark ? '#f1f5f9' : '#0f172a';
+  const descColor = isDark ? '#94a3b8' : '#475569';
+  const closeBtnColor = isDark ? '#94a3b8' : '#475569';
+
   return (
-    <div className="bg-white dark:bg-[#211f24] border border-zinc-200 dark:border-[#494551]/50 rounded-lg p-5 relative overflow-hidden transition-all shadow-sm">
-      
-      {/* Background Progress Bar for Converting State */}
-      {(status === "uploading" || status === "converting") && (
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-zinc-100 dark:bg-[#36343a]">
-          <div className="h-full bg-purple-600 dark:bg-[#cfbcff] progress-bar-stripes relative transition-all duration-300" style={{ width: `${Math.min(progress, 100)}%` }}>
-            <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/20"></div>
-          </div>
+    <div style={{
+      background: rowBg,
+      border: status === 'done' ? '1px solid rgba(16,185,129,0.3)' : status === 'error' ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${rowBorder}`,
+      borderRadius: '16px',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.2s ease',
+    }}>
+      {/* Progress bar */}
+      {isProcessing && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '3px', background: 'rgba(255,255,255,0.05)' }}>
+          <div style={{ height: '100%', width: `${Math.min(progress, 100)}%`, background: `linear-gradient(90deg, ${accent}, ${accent}cc)`, transition: 'width 0.3s ease', boxShadow: `0 0 8px ${accent}80` }} />
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        {/* Left Side: Icon & Info */}
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded flex items-center justify-center ${
-            status === 'done' ? 'bg-green-50 text-green-700 dark:bg-[#1B3B24] dark:text-[#A3E5B5]' : 
-            status === 'error' ? 'bg-red-50 text-red-700 dark:bg-[#3B1B1B] dark:text-[#E5A3A3]' : 'bg-purple-50 text-purple-600 dark:bg-[#6750a4]/20 dark:text-[#cfbcff]'
-          }`}>
-            {(status === 'uploading' || status === 'converting') ? <RefreshCw size={24} className="animate-spin" /> : 
-             status === 'done' ? <CheckCircle2 size={24} /> : 
-             status === 'error' ? <AlertCircle size={24} /> :
-             <FileText size={24} />}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+        {/* Left: icon + name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, flex: 1 }}>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+            background: status === 'done' ? 'rgba(16,185,129,0.15)' : status === 'error' ? 'rgba(239,68,68,0.15)' : `${accent}18`,
+            border: status === 'done' ? '1px solid rgba(16,185,129,0.3)' : status === 'error' ? '1px solid rgba(239,68,68,0.3)' : `1px solid ${accent}30`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {isProcessing ? <RefreshCw size={20} color={accent} style={{ animation: 'spin 1s linear infinite' }} /> :
+             status === 'done'  ? <CheckCircle2 size={20} color="#10b981" /> :
+             status === 'error' ? <AlertCircle size={20} color="#ef4444" /> :
+             <FileText size={20} color={accent} />}
           </div>
-          <div>
-            <p className="text-zinc-800 dark:text-[#e6e0e9] font-medium truncate max-w-[180px] md:max-w-[240px]">
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: nameColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '260px' }}>
               {status === 'done' ? item.file.name.replace(config.from, config.to) : item.file.name}
             </p>
-            <p className="text-sm text-zinc-500 dark:text-[#948e9c]">
-              {status === 'uploading' ? `Uploading...` : 
-               status === 'converting' ? `Converting to ${config.to.toUpperCase().replace(".", "")}...` : 
-               status === 'error' ? <span className="text-red-500 dark:text-[#E5A3A3]">{error}</span> :
-               `${(item.file.size / (1024 * 1024)).toFixed(2)} MB`}
+            <p style={{ fontSize: '12px', color: descColor, marginTop: '2px' }}>
+              {isProcessing ? (
+                <span style={{ color: accent }}>{status === 'uploading' ? 'Uploading…' : `Converting to ${config.to.replace('.','').toUpperCase()}… ${Math.min(progress,100)}%`}</span>
+              ) : status === 'error' ? (
+                <span style={{ color: '#ef4444' }}>{error}</span>
+              ) : (
+                `${(item.file.size / (1024*1024)).toFixed(2)} MB`
+              )}
             </p>
           </div>
         </div>
 
-        {/* Right Side: Actions based on state */}
-        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-          
-          {status === "idle" && (
+        {/* Right: actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {status === 'idle' && (
             <>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-[#36343a] dark:text-[#cbc4d2] dark:border-[#494551]/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-[#948e9c]"></span> Ready
-              </span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onRemove(item.id)} className="p-2 text-zinc-500 dark:text-[#cbc4d2] hover:text-red-500 transition-colors rounded hover:bg-zinc-100 dark:hover:bg-[#36343a] cursor-pointer">
-                  <X size={16} />
-                </button>
-                <Button onClick={() => convert(item.file, config.from, config.to)} className="bg-purple-600 hover:bg-purple-700 text-white dark:bg-[#cfbcff] dark:hover:bg-[#e9ddff] dark:text-[#381e72]">
-                  Convert
-                </Button>
-              </div>
+              <button onClick={() => onRemove(item.id)} style={{ padding: '8px', borderRadius: '8px', background: 'transparent', border: 'none', color: closeBtnColor, cursor: 'pointer', display: 'flex', transition: 'all 0.15s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = closeBtnColor; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              ><X size={16} /></button>
+              <button onClick={() => convert(item.file, config.from, config.to)} style={{ padding: '8px 18px', borderRadius: '10px', background: `linear-gradient(135deg, ${accent}, ${accent}cc)`, border: 'none', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', boxShadow: `0 4px 14px ${accent}40` }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
+              >Convert</button>
             </>
           )}
 
-          {(status === "uploading" || status === "converting") && (
-            <>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200 dark:bg-[#6750a4]/20 dark:text-[#cfbcff] dark:border-[#cfbcff]/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-600 dark:bg-[#cfbcff] animate-ping"></span> {Math.min(progress, 100)}%
-              </span>
-            </>
+          {isProcessing && (
+            <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', background: `${accent}20`, color: accent, border: `1px solid ${accent}30`, fontWeight: 600 }}>
+              {Math.min(progress,100)}%
+            </span>
           )}
 
-          {status === "done" && (
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 dark:bg-[#1B3B24] dark:text-[#A3E5B5] dark:border-[#2D5A3A]">
-                Done
-              </span>
+          {status === 'done' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '100px', background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)', fontWeight: 600 }}>Done ✓</span>
               {downloadUrl && (
-                <Button
-                  onClick={() => {
-                    const a = document.createElement("a");
-                    a.href = downloadUrl;
-                    a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                  className="bg-purple-600 hover:bg-purple-700 text-white dark:bg-[#cfbcff] dark:hover:bg-[#e9ddff] dark:text-[#381e72] h-8 text-xs px-3 py-1 flex items-center gap-1 font-medium transition-colors cursor-pointer animate-fade-in"
-                >
-                  Download
-                </Button>
+                <button onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.25)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.15)'; }}
+                ><Download size={14} /> Download</button>
               )}
             </div>
           )}
 
-          {status === "error" && (
-            <>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onRemove(item.id)} className="p-2 text-zinc-500 dark:text-[#cbc4d2] hover:text-red-500 transition-colors rounded hover:bg-zinc-100 dark:hover:bg-[#36343a] cursor-pointer">
-                  <X size={16} />
-                </button>
-                <Button onClick={() => convert(item.file, config.from, config.to)} className="bg-purple-600 hover:bg-purple-700 text-white dark:bg-[#cfbcff] dark:hover:bg-[#e9ddff] dark:text-[#381e72]">
-                  Retry
-                </Button>
-              </div>
-            </>
+          {status === 'error' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button onClick={() => onRemove(item.id)} style={{ padding: '8px', borderRadius: '8px', background: 'transparent', border: 'none', color: closeBtnColor, cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
+              <button onClick={() => convert(item.file, config.from, config.to)} style={{ padding: '8px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Retry</button>
+            </div>
           )}
-
         </div>
       </div>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
@@ -216,41 +196,36 @@ export default function ConvertPage() {
   const router = useRouter();
   const formatSlug = (params.format as string) || "docx-to-pdf";
   const config = getConfigForSlug(formatSlug);
+  const accent = (config as any).accent ?? "#6366f1";
 
   const { theme, toggleTheme } = useTheme();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [health, setHealth] = useState({
-    gotenberg: "checking",
-    storage: "checking",
-    maxSize: "50 MB"
-  });
+  const isDark = theme === "dark";
+  const [helpOpen, setHelpOpen]         = useState(false);
+  const [files, setFiles]               = useState<FileItem[]>([]);
+  const [forceConvertAll, setForceConvertAll] = useState(false);
+  const [scrolled, setScrolled]         = useState(false);
+
+  // Theme-aware colors
+  const bg        = isDark ? "#080808" : "#f8fafc";
+  const bgCard    = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
+  const border    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const textPrim  = isDark ? "#f8fafc" : "#0f172a";
+  const textMid   = isDark ? "#e2e8f0" : "#334155";
+  const textMute  = isDark ? "#475569" : "#64748b";
+  const navBg     = isDark ? "rgba(8,8,8,0.9)"   : "rgba(248,250,252,0.9)";
+  const navBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
+  const modalBg   = isDark ? "#0f0f0f" : "#ffffff";
+  const modalBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
 
   useEffect(() => {
-    async function checkHealth() {
-      try {
-        const res = await fetch("/api/health");
-        if (res.ok) {
-          const data = await res.json();
-          setHealth(data);
-        }
-      } catch (err) {
-        setHealth({ gotenberg: "offline", storage: "local", maxSize: "50 MB" });
-      }
-    }
-    checkHealth();
-  }, [settingsOpen]);
-
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [forceConvertAll, setForceConvertAll] = useState(false);
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      const newItems = acceptedFiles.map(file => ({
-        id: Math.random().toString(36).substring(7),
-        file,
-      }));
-      setFiles(prev => [...prev, ...newItems]);
+      setFiles(prev => [...prev, ...acceptedFiles.map(file => ({ id: Math.random().toString(36).slice(7), file }))]);
       setForceConvertAll(false);
     }
   }, []);
@@ -258,286 +233,179 @@ export default function ConvertPage() {
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: config.accept,
-    maxSize: 50 * 1024 * 1024, // 50MB
-    noClick: files.length > 0, // Disable click to upload on the wrapper if files exist
+    maxSize: 50 * 1024 * 1024,
+    noClick: files.length > 0,
     multiple: true,
   });
 
-  const handleConvertAll = () => {
-    setForceConvertAll(true);
-  };
-
-  const removeFile = (id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
-  };
-
   return (
-    <div className="bg-[#f8f9fa] dark:bg-[#141218] text-[#1c1b1f] dark:text-[#e6e0e9] h-screen w-screen flex flex-col font-sans selection:bg-purple-200 dark:selection:bg-[#6750a4] selection:text-purple-900 dark:selection:text-[#e0d2ff] overflow-hidden transition-colors duration-200">
-      <header className="bg-white dark:bg-[#141218] border-b border-zinc-200 dark:border-[#494551]/60 flex justify-between items-center w-full px-5 md:px-10 h-16 shrink-0 z-50 transition-colors duration-200">
-        <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
-          <span className="text-2xl font-bold text-purple-600 dark:text-[#cfbcff] tracking-tight">CONVERTO</span>
-        </div>
-        <div className="flex items-center gap-4 text-zinc-600 dark:text-[#cbc4d2]">
-          <button 
-            aria-label="Toggle Theme" 
-            onClick={toggleTheme}
-            className="hover:bg-zinc-100 dark:hover:bg-[#2b292f] transition-colors p-2 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            {theme === "dark" ? <Sun size={20} className="text-[#cfbcff]" /> : <Moon size={20} className="text-purple-600" />}
-          </button>
-          <button 
-            aria-label="settings" 
-            onClick={() => setSettingsOpen(true)}
-            className="hover:bg-zinc-100 dark:hover:bg-[#2b292f] transition-colors p-2 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            <Settings size={20} />
-          </button>
-          <button 
-            aria-label="help" 
-            onClick={() => setHelpOpen(true)}
-            className="hover:bg-zinc-100 dark:hover:bg-[#2b292f] transition-colors p-2 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            <HelpCircle size={20} />
-          </button>
-        </div>
-      </header>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif !important; background: ${bg} !important; color: ${textMid} !important; transition: background 0.3s ease; }
+        ::-webkit-scrollbar { width: 6.5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); border-radius: 4px; }
+        .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-backdrop { animation: fadeIn 0.2s ease; }
+        .modal-content { animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+      `}</style>
 
-      <main className="flex-1 flex flex-col items-center px-5 md:px-10 py-6 overflow-hidden">
-        <div className="w-full max-w-3xl h-full flex flex-col gap-6 overflow-hidden">
-          <div className="flex items-center justify-between shrink-0">
-            <button onClick={() => router.push('/')} className="inline-flex items-center gap-2 text-purple-600 dark:text-[#cfbcff] hover:text-purple-700 dark:hover:text-[#e9ddff] transition-colors text-sm font-medium group cursor-pointer">
-              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-              Back to formats
-            </button>
-            
-            {files.length > 0 && (
-              <Button onClick={handleConvertAll} className="bg-purple-600 hover:bg-purple-700 text-white dark:bg-[#cfbcff] dark:hover:bg-[#e9ddff] dark:text-[#381e72] gap-2 shadow-md">
-                Convert All Files
-                <ArrowRight size={16} />
-              </Button>
-            )}
+      <div style={{ background: bg, minHeight: '100vh', display: 'flex', flexDirection: 'column', color: textMid, transition: 'background 0.3s ease' }}>
+
+        {/* ── NAVBAR ── */}
+        <header style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: scrolled ? navBg : 'transparent',
+          backdropFilter: scrolled ? 'blur(20px)' : 'none',
+          borderBottom: scrolled ? `1px solid ${navBorder}` : '1px solid transparent',
+          transition: 'all 0.3s ease',
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Logo left */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span onClick={() => router.push('/')} style={{ cursor: 'pointer', fontSize: '20px', fontWeight: 800, letterSpacing: '-0.03em', textDecoration: 'none' }}>
+                <span style={{ color: textPrim }}>Conver</span>
+                <span className="gradient-text">to</span>
+              </span>
+              <button onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s' }}>
+                <ArrowLeft size={13} /> Back
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Visible theme toggle */}
+              <button onClick={toggleTheme}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`, color: textMid, cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {isDark ? 'Light' : 'Dark'}
+              </button>
+              <button onClick={() => setHelpOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '10px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`, color: textMute, cursor: 'pointer', fontSize: '13px', fontWeight: 500, transition: 'all 0.2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              ><HelpCircle size={18} /></button>
+            </div>
+          </div>
+        </header>
+
+        {/* ── MAIN ── */}
+        <main style={{ flex: 1, padding: '40px 24px 60px', maxWidth: '900px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+
+          {/* Page header */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `${accent}18`, border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={18} color={accent} />
+              </div>
+              <h1 style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 700, letterSpacing: '-0.03em', color: textPrim }}>
+                {config.title}
+              </h1>
+            </div>
+            <p style={{ fontSize: '14px', color: textMute, paddingLeft: '46px' }}>
+              Drop your {config.from.replace('.','').toUpperCase()} files below — convert individually or all at once
+            </p>
           </div>
 
-          <div {...getRootProps()} className="w-full flex-1 min-h-0 outline-none overflow-hidden flex flex-col">
+          {/* Dropzone + file list */}
+          <div {...getRootProps()} style={{ outline: 'none' }}>
             <input {...getInputProps()} />
-            
+
             {files.length === 0 ? (
-              // Empty State Dropzone
-              <div className={`w-full flex-1 bg-white dark:bg-[#0f0d13] border-2 ${
-                isDragActive ? "border-purple-500 dark:border-[#cfbcff] bg-purple-50/30 dark:bg-[#1d1b20]" : "border-zinc-200 dark:border-[#494551]"
-              } border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors hover:border-purple-500 dark:hover:border-[#cfbcff] group hover:bg-zinc-50/50 dark:hover:bg-[#1d1b20]`}>
-                <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-[#211f24] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform group-hover:bg-purple-50 dark:group-hover:bg-[#6750a4]/20">
-                  <UploadCloud size={32} className="text-zinc-500 dark:text-[#cbc4d2] group-hover:text-purple-600 dark:group-hover:text-[#cfbcff] transition-colors" />
+              /* Empty dropzone */
+              <div style={{
+                border: `2px dashed ${isDragActive ? accent : border}`,
+                borderRadius: '20px',
+                padding: '64px 32px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                textAlign: 'center', cursor: 'pointer', transition: 'all 0.25s ease',
+                background: isDragActive ? `${accent}08` : bgCard,
+                boxShadow: isDragActive ? `0 0 40px ${accent}15` : 'none',
+              }}
+                onMouseEnter={e => { if (files.length === 0) { (e.currentTarget as HTMLElement).style.borderColor = `${accent}60`; (e.currentTarget as HTMLElement).style.background = `${accent}06`; } }}
+                onMouseLeave={e => { if (!isDragActive) { (e.currentTarget as HTMLElement).style.borderColor = border; (e.currentTarget as HTMLElement).style.background = bgCard; } }}
+              >
+                <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: `${accent}15`, border: `1px solid ${accent}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', animation: isDragActive ? 'bounce 0.6s ease infinite' : 'none' }}>
+                  <UploadCloud size={32} color={accent} />
                 </div>
-                <h2 className="text-xl font-semibold mb-1 text-zinc-800 dark:text-white">Drop your {config.from} files here</h2>
-                <p className="text-zinc-500 dark:text-[#cbc4d2] mb-4 text-xs">or click to browse from your computer (Multiple allowed)</p>
-                <div className="flex items-center gap-2 text-[10px] font-medium text-zinc-500 dark:text-[#948e9c]">
-                  <span className="px-2 py-0.5 bg-zinc-100 dark:bg-[#211f24] rounded">Max size: 50MB</span>
-                  <span className="px-2 py-0.5 bg-zinc-100 dark:bg-[#211f24] rounded">Formats: {config.from}</span>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: textPrim, marginBottom: '8px', letterSpacing: '-0.02em' }}>
+                  Drop your {config.from.replace('.','').toUpperCase()} files here
+                </h2>
+                <p style={{ fontSize: '14px', color: textMute, marginBottom: '20px' }}>or click anywhere to browse from your computer</p>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: bgCard, border: `1px solid ${border}`, color: textMute }}>Max 50 MB</span>
+                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: `${accent}15`, border: `1px solid ${accent}25`, color: accent }}>{config.from.replace('.','').toUpperCase()}</span>
+                  <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '100px', background: bgCard, border: `1px solid ${border}`, color: textMute }}>Multiple files</span>
                 </div>
               </div>
             ) : (
-              // Active Files List
-              <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                {/* Small dropzone for adding more files when dragging over the area */}
+              /* Files list */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {isDragActive && (
-                  <div className="w-full bg-purple-50/30 dark:bg-[#1d1b20] border-2 border-purple-500 dark:border-[#cfbcff] border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center shrink-0">
-                     <UploadCloud size={24} className="text-purple-600 dark:text-[#cfbcff] mb-1 animate-bounce" />
-                     <p className="text-purple-600 dark:text-[#cfbcff] text-sm font-medium">Drop more files here...</p>
+                  <div style={{ border: `2px dashed ${accent}`, borderRadius: '14px', padding: '20px', textAlign: 'center', background: `${accent}08` }}>
+                    <UploadCloud size={22} color={accent} style={{ margin: '0 auto 6px', display: 'block', animation: 'bounce 0.6s ease infinite' }} />
+                    <p style={{ fontSize: '14px', color: accent, fontWeight: 600 }}>Drop more files here…</p>
                   </div>
                 )}
-                
-                {/* Scrollable Area for Files List */}
-                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 custom-scrollbar">
-                  {files.map(item => (
-                    <FileRow 
-                      key={item.id} 
-                      item={item} 
-                      config={config} 
-                      onRemove={removeFile}
-                      forceConvert={forceConvertAll}
-                    />
-                  ))}
-                </div>
 
-                {/* Add More Files Button underneath the list */}
+                {files.map(item => (
+                  <FileRow key={item.id} item={item} config={config} onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))} forceConvert={forceConvertAll} />
+                ))}
+
                 {!isDragActive && (
-                  <div className="mt-2 shrink-0">
-                    <Button onClick={open} className="bg-purple-600 hover:bg-purple-700 text-white dark:bg-[#cfbcff] dark:hover:bg-[#e9ddff] dark:text-[#381e72] gap-2 w-full py-6 text-sm shadow-md">
-                      <Plus size={16} />
-                      Add more {config.from} files
-                    </Button>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                    <button onClick={e => { e.stopPropagation(); open(); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '14px', background: bgCard, border: `1px dashed ${border}`, color: textMute, cursor: 'pointer', fontSize: '14px', fontWeight: 500, transition: 'all 0.2s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = `${accent}50`; (e.currentTarget as HTMLElement).style.color = accent; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = border; (e.currentTarget as HTMLElement).style.color = textMute; }}
+                    ><Plus size={16} /> Add more files</button>
+                    <button onClick={e => { e.stopPropagation(); setForceConvertAll(true); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', borderRadius: '14px', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: 'all 0.2s', boxShadow: `0 4px 20px ${accent}35` }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
+                    ><Zap size={16} /> Convert All</button>
                   </div>
                 )}
               </div>
             )}
           </div>
+        </main>
 
-        </div>
-      </main>
-
-      <footer className="bg-white dark:bg-[#141218] border-t border-zinc-200 dark:border-[#494551]/60 flex justify-between items-center w-full px-5 md:px-10 h-12 shrink-0 transition-colors duration-200">
-        <div className="text-xs font-bold text-purple-600 dark:text-[#cfbcff]">
-          © 2026 CONVERTO.
-        </div>
-        <div className="flex items-center gap-6">
-          <Link className="text-xs text-zinc-500 hover:text-purple-600 dark:text-[#cbc4d2] dark:hover:text-[#cfbcff] transition-colors" href="/privacy">Privacy Policy</Link>
-          <Link className="text-xs text-zinc-500 hover:text-purple-600 dark:text-[#cbc4d2] dark:hover:text-[#cfbcff] transition-colors" href="/terms">Terms of Service</Link>
-        </div>
-      </footer>
-
-      {/* Settings Modal overlay */}
-      {settingsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div 
-            className="absolute inset-0 bg-black/50 dark:bg-black/75 backdrop-blur-md transition-opacity"
-            onClick={() => setSettingsOpen(false)}
-          />
-          <div className="bg-white dark:bg-[#211f24] border border-zinc-200 dark:border-[#cfbcff]/30 rounded-2xl w-full max-w-md p-6 relative shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-10 animate-zoom-in">
-            <button 
-              onClick={() => setSettingsOpen(false)}
-              className="absolute top-4 right-4 text-zinc-500 dark:text-[#cbc4d2] hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#2b292f] p-1.5 rounded-full transition-colors cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-              <Settings size={20} className="text-purple-600 dark:text-[#cfbcff]" />
-              Application Settings
-            </h3>
-            
-            <div className="space-y-4">
-              {/* Gotenberg Rendering Server Status */}
-              <div className="border border-zinc-200 dark:border-[#494551]/60 rounded-xl p-3.5 flex flex-col gap-1.5 bg-zinc-50/50 dark:bg-[#141218]/50">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-[#cbc4d2]">PDF Rendering Engine</span>
-                  {health.gotenberg === "checking" ? (
-                    <span className="text-[10px] text-zinc-400 animate-pulse">Checking status...</span>
-                  ) : health.gotenberg === "online" ? (
-                    <span className="text-[10px] bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
-                      Online (High Fidelity)
-                    </span>
-                  ) : (
-                    <span className="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                      Local Sandbox Mode
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                  {health.gotenberg === "online" 
-                    ? "LibreOffice container active. Word/Excel/HTML layouts will convert with pixel-perfect output structure."
-                    : "Gotenberg is offline. Sandbox fallback converts metadata beautifully and provides setup instructions."}
-                </p>
-              </div>
-
-              {/* Storage Infrastructure Node */}
-              <div className="border border-zinc-200 dark:border-[#494551]/60 rounded-xl p-3.5 flex flex-col gap-1.5 bg-zinc-50/50 dark:bg-[#141218]/50">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-zinc-500 dark:text-[#cbc4d2] flex items-center gap-1">
-                    <Database size={13} />
-                    Storage Node
-                  </span>
-                  {health.storage === "checking" ? (
-                    <span className="text-[10px] text-zinc-400 animate-pulse">Checking...</span>
-                  ) : health.storage === "cloud" ? (
-                    <span className="text-[10px] bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full font-bold">
-                      AWS S3 / R2 Cloud
-                    </span>
-                  ) : (
-                    <span className="text-[10px] bg-zinc-200 dark:bg-[#2b292f] text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <HardDrive size={10} />
-                      Local Temporary Disk
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                  {health.storage === "cloud"
-                    ? "Remote Cloud Bucket configured. Files are securely transferred via encrypted S3 pre-signed URLs."
-                    : "Zero retention local file buffer active. Converted data exists exclusively in transient memory."}
-                </p>
-              </div>
-
-              {/* Upload Limits */}
-              <div className="border border-zinc-200 dark:border-[#494551]/60 rounded-xl p-3.5 flex justify-between items-center bg-zinc-50/50 dark:bg-[#141218]/50">
-                <span className="text-xs font-semibold text-zinc-500 dark:text-[#cbc4d2] flex items-center gap-1">
-                  <ShieldCheck size={13} />
-                  Max File Limit
-                </span>
-                <span className="text-xs font-bold text-purple-600 dark:text-[#cfbcff]">
-                  {health.maxSize}
-                </span>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => setSettingsOpen(false)}
-              className="mt-5 w-full bg-purple-600 dark:bg-[#cfbcff] text-white dark:text-[#141218] hover:bg-purple-700 dark:hover:bg-[#b5a3ff] py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            >
-              Done
-            </button>
+        {/* ── FOOTER ── */}
+        <footer style={{ borderTop: `1px solid ${border}`, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <span style={{ fontSize: '13px', color: textMute, fontWeight: 600 }}>© 2026 CONVERTO.</span>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <Link href="/privacy" style={{ fontSize: '13px', color: textMute, textDecoration: 'none' }}>Privacy Policy</Link>
+            <Link href="/terms"   style={{ fontSize: '13px', color: textMute, textDecoration: 'none' }}>Terms of Service</Link>
           </div>
-        </div>
-      )}
+        </footer>
+      </div>
 
-      {/* Help & FAQ Dialog Modal */}
+      {/* ── HELP MODAL ── */}
       {helpOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div 
-            className="absolute inset-0 bg-black/50 dark:bg-black/75 backdrop-blur-md transition-opacity"
-            onClick={() => setHelpOpen(false)}
-          />
-          <div className="bg-white dark:bg-[#211f24] border border-zinc-200 dark:border-[#cfbcff]/30 rounded-2xl w-full max-w-lg p-6 relative shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-10 animate-zoom-in">
-            <button 
-              onClick={() => setHelpOpen(false)}
-              className="absolute top-4 right-4 text-zinc-500 dark:text-[#cbc4d2] hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#2b292f] p-1.5 rounded-full transition-colors cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
-              <QuestionIcon size={20} className="text-purple-600 dark:text-[#cfbcff]" />
-              Frequently Asked Questions
-            </h3>
-            
-            <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1.5 custom-scrollbar">
-              <div className="border-b border-zinc-100 dark:border-[#494551]/30 pb-3">
-                <h4 className="text-xs font-bold text-zinc-800 dark:text-[#e6e0e9] mb-1">How do I use Converto?</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Select your source format on the homepage dashboard, select your desired conversion target (e.g. XLSX to PDF), drop your files inside the upload area, and click convert. Your download will start instantly.
-                </p>
-              </div>
-
-              <div className="border-b border-zinc-100 dark:border-[#494551]/30 pb-3">
-                <h4 className="text-xs font-bold text-zinc-800 dark:text-[#e6e0e9] mb-1">Are my files stored on Converto's servers?</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  No. Converto maintains a strict zero-retention data privacy protocol. All files uploaded are temporarily processed in memory and are purged immediately after the conversion download completes.
-                </p>
-              </div>
-
-              <div className="border-b border-zinc-100 dark:border-[#494551]/30 pb-3">
-                <h4 className="text-xs font-bold text-zinc-800 dark:text-[#e6e0e9] mb-1">What is local Sandbox Mode?</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  If the backend rendering containers are offline on localhost, sandbox mode intercepts the document and compiles a beautiful, design-styled metadata summary PDF with technical debugging logs. Full conversions occur in production.
-                </p>
-              </div>
-
-              <div className="pb-1">
-                <h4 className="text-xs font-bold text-zinc-800 dark:text-[#e6e0e9] mb-1">What is the upload size limit?</h4>
-                <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  Converto currently accepts individual files up to 50 MB in size to guarantee rapid server response speeds and optimize container memory utilization.
-                </p>
-              </div>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div onClick={() => setHelpOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }} />
+          <div className="modal-content" style={{ position: 'relative', zIndex: 10, background: modalBg, border: `1px solid ${modalBorder}`, borderRadius: '24px', width: '100%', maxWidth: '520px', padding: '28px', boxShadow: '0 40px 80px rgba(0,0,0,0.8)', maxHeight: '85vh', overflow: 'hidden' }}>
+            <button onClick={() => setHelpOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', padding: '8px', borderRadius: '10px', background: bgCard, border: `1px solid ${border}`, color: textMute, cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: textPrim, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><HelpCircle size={18} color="#6366f1" /> FAQ</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', maxHeight: '60vh' }}>
+              {[
+                { q: 'How do I convert a file?', a: 'Drop or browse your file into the upload zone above, then click Convert. Download starts instantly when done.' },
+                { q: 'Are my files stored?', a: 'No — files are processed in-memory and deleted immediately after conversion. Zero retention.' },
+                { q: 'What is Sandbox Mode?', a: 'When Gotenberg is offline, our sandbox gracefully handles conversions with a metadata fallback. All formats work in production.' },
+                { q: 'File size limit?', a: 'Files up to 50 MB per upload are accepted.' },
+              ].map(({ q, a }, i) => (
+                <div key={q} style={{ padding: '16px 0', borderBottom: i < 3 ? `1px solid ${border}` : 'none' }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: textPrim, marginBottom: '6px' }}>{q}</p>
+                  <p style={{ fontSize: '13px', color: textMute, lineHeight: 1.6 }}>{a}</p>
+                </div>
+              ))}
             </div>
-            
-            <button
-              onClick={() => setHelpOpen(false)}
-              className="mt-5 w-full bg-purple-600 dark:bg-[#cfbcff] text-white dark:text-[#141218] hover:bg-purple-700 dark:hover:bg-[#b5a3ff] py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            >
-              Close Help
-            </button>
+            <button onClick={() => setHelpOpen(false)} style={{ marginTop: '20px', width: '100%', padding: '12px', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

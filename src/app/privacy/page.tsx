@@ -1,110 +1,145 @@
-import React from "react";
+"use client";
 import Link from "next/link";
-import { ArrowLeft, Shield } from "lucide-react";
-import type { Metadata } from "next";
+import { ShieldCheck, ArrowLeft, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/ThemeProvider";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | Converto",
-  description: "Learn how Converto protects your privacy, files, and personal data during file conversion.",
-};
+export default function PrivacyPage() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
-export default function PrivacyPolicyPage() {
+  const bg       = isDark ? "#080808" : "#f8fafc";
+  const textPrim = isDark ? "#f8fafc" : "#0f172a";
+  const textMid  = isDark ? "#cbd5e1" : "#334155";
+  const textMute = isDark ? "#64748b" : "#94a3b8";
+  const border   = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
+  const navBg    = isDark ? "rgba(8,8,8,0.9)" : "rgba(248,250,252,0.9)";
+  const callout  = isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.05)";
+  const calloutBorder = isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)";
+  const btnBg    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+  const btnBorder = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+
   return (
-    <div className="bg-[#141218] text-[#e6e0e9] min-h-screen w-full flex flex-col font-sans selection:bg-[#6750a4] selection:text-[#e0d2ff]">
-      {/* Header */}
-      <header className="bg-[#141218] border-b border-[#494551]/60 flex items-center justify-between w-full px-5 md:px-10 h-16 shrink-0 z-40">
-        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-          <ArrowLeft className="text-[#cbc4d2] group-hover:text-[#cfbcff] transition-colors" size={18} />
-          <span className="text-sm font-semibold text-[#cbc4d2] group-hover:text-[#cfbcff] transition-colors">
-            Back to Converter
-          </span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#6750a4]/30 flex items-center justify-center border border-[#cfbcff]/20">
-            <span className="text-[#cfbcff] font-bold text-sm">C</span>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif !important; background: ${bg} !important; transition: background 0.3s ease; }
+        .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        ::-webkit-scrollbar { width: 6.5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); border-radius: 4px; }
+      `}</style>
+
+      <div style={{ background: bg, minHeight: "100vh", display: "flex", flexDirection: "column", color: textMid, transition: "background 0.3s ease" }}>
+
+        {/* Navbar */}
+        <header style={{ position: "sticky", top: 0, zIndex: 50, background: navBg, backdropFilter: "blur(20px)", borderBottom: `1px solid ${border}` }}>
+          <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 32px", height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {/* Logo left */}
+            <Link href="/" style={{ textDecoration: "none", fontSize: "18px", fontWeight: 800, letterSpacing: "-0.02em" }}>
+              <span style={{ color: textPrim }}>Conver</span>
+              <span className="gradient-text">to</span>
+            </Link>
+
+            {/* Right actions */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {/* Visible theme toggle */}
+              <button
+                onClick={toggleTheme}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: btnBg, border: `1px solid ${btnBorder}`, color: textMid, cursor: "pointer", fontSize: "13px", fontWeight: 500, transition: "all 0.2s" }}
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {isDark ? "Light" : "Dark"}
+              </button>
+              <Link href="/" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${border}`, color: textMute, textDecoration: "none", fontSize: "13px", fontWeight: 500 }}>
+                <ArrowLeft size={14} /> Back
+              </Link>
+            </div>
           </div>
-          <span className="font-extrabold tracking-wider text-[#cfbcff] text-base">CONVERTO</span>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto px-6 py-12 md:py-16">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 bg-[#cfbcff]/10 text-[#cfbcff] rounded-xl border border-[#cfbcff]/20">
-            <Shield size={24} />
+        {/* Content */}
+        <main style={{ flex: 1, maxWidth: "860px", width: "100%", margin: "0 auto", padding: "64px 32px 80px" }}>
+
+          {/* Hero */}
+          <div style={{ marginBottom: "52px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "5px 16px", borderRadius: "100px", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", color: "#a5b4fc", fontSize: "14px", fontWeight: 500, marginBottom: "24px" }}>
+              <ShieldCheck size={14} /> Privacy Policy
+            </div>
+            <h1 style={{ fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 800, letterSpacing: "-0.04em", color: textPrim, lineHeight: 1.08, marginBottom: "20px" }}>
+              Your privacy,{" "}<span className="gradient-text">guaranteed</span>
+            </h1>
+            <p style={{ fontSize: "18px", color: textMute, lineHeight: 1.65, maxWidth: "580px", marginBottom: "16px" }}>
+              Converto is built with privacy-first principles. We don't store your files, we don't track you, and we don't sell your data.
+            </p>
+            <p style={{ fontSize: "13px", color: isDark ? "#334155" : "#94a3b8" }}>Last updated: May 2026</p>
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            Privacy Policy
-          </h1>
-        </div>
-        <p className="text-sm text-[#948e9c] mb-10">
-          Last Updated: May 20, 2026
-        </p>
 
-        {/* Content Sections */}
-        <div className="space-y-8 text-[#cbc4d2] leading-relaxed">
-          <section className="bg-[#211f24] border border-[#494551]/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white mb-4">1. Our Commitment to Your Privacy</h2>
-            <p>
-              At Converto, we believe that your files and personal data belong to you. We are committed to maintaining a secure, private environment where you can convert your media and documents without worrying about unauthorized access, data mining, or retention of your content.
+          <div style={{ height: "1px", background: `linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent)`, marginBottom: "52px" }} />
+
+          {/* TL;DR */}
+          <div style={{ padding: "28px 32px", borderRadius: "20px", background: callout, border: `1px solid ${calloutBorder}`, marginBottom: "48px" }}>
+            <p style={{ color: "#a5b4fc", fontSize: "16px", lineHeight: 1.7, margin: 0 }}>
+              <strong style={{ color: "#c7d2fe", fontWeight: 700 }}>TL;DR — </strong>
+              Your files are never stored. Everything is processed in-memory and deleted immediately after conversion. We collect zero personal data.
             </p>
-          </section>
+          </div>
 
-          <section className="bg-[#211f24] border border-[#494551]/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white mb-4">2. File Protection & Retention Policy</h2>
-            <p className="mb-4">
-              Our conversion pipeline is designed with a strict **zero-retention** approach:
-            </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                <strong className="text-white">Processing:</strong> Files uploaded to Converto are processed entirely in memory or stored temporarily on secure instances only for the duration of the conversion.
-              </li>
-              <li>
-                <strong className="text-white">Deletion:</strong> Immediately after the conversion is complete and the download link is served, the source and target files are deleted from our servers.
-              </li>
-              <li>
-                <strong className="text-white">No backups:</strong> We do not keep logs, backups, or copies of your files.
-              </li>
-            </ul>
-          </section>
+          {/* Sections */}
+          {[
+            { title: "1. Information We Collect", content: [
+              { type: "p", text: "Converto operates as a stateless, ephemeral file conversion service. We collect:" },
+              { type: "ul", items: [
+                "Nothing from you — no account, no sign-up, no email required.",
+                "Temporary file data — only held in server memory during active conversion processing.",
+                "Anonymous usage analytics — aggregate page view counts only, with no personal identifiers.",
+              ]},
+            ]},
+            { title: "2. File Handling & Zero Retention", content: [
+              { type: "p", text: "When you upload a file for conversion, it is loaded into temporary server memory, processed, and the converted output is returned to your browser. Files are never written to disk and are purged from memory immediately after the conversion response is delivered." },
+              { type: "p", text: "We maintain a strict zero-retention policy. There is no database storing your files, no cloud backup, and no human access to your conversion data at any time." },
+            ]},
+            { title: "3. Cookies & Tracking", content: [
+              { type: "p", text: "Converto does not use tracking cookies, advertising cookies, or any third-party analytics platforms that identify individual users. Your theme preference (dark/light) is stored in your browser's localStorage only and never transmitted to our servers." },
+            ]},
+            { title: "4. Third-Party Services", content: [
+              { type: "p", text: "Depending on your deployment configuration, Converto may use:" },
+              { type: "ul", items: [
+                "Gotenberg — a self-hosted LibreOffice container for high-fidelity document conversion. No data is sent to external servers.",
+                "AWS S3 / Cloudflare R2 — optional temporary cloud buffer for large files, with automatic deletion after download. Disabled by default.",
+              ]},
+            ]},
+            { title: "5. Security", content: [
+              { type: "p", text: "All file uploads and downloads are transmitted over HTTPS (TLS 1.3). Server infrastructure is hardened and access-controlled. Conversion processes are isolated and cannot access each other's data." },
+            ]},
+            { title: "6. Children's Privacy", content: [
+              { type: "p", text: "Converto does not knowingly collect any personal information from children under the age of 13. The service is designed to be fully anonymous and requires no personal data from any user." },
+            ]},
+            { title: "7. Changes to This Policy", content: [
+              { type: "p", text: "We may update this Privacy Policy from time to time. Changes will be reflected by the 'Last updated' date at the top of this page. Continued use of Converto after changes constitutes acceptance of the updated policy." },
+            ]},
+          ].map((section, si) => (
+            <div key={section.title} style={{ marginBottom: "44px" }}>
+              <h2 style={{ fontSize: "22px", fontWeight: 700, color: textPrim, marginBottom: "16px", letterSpacing: "-0.02em" }}>{section.title}</h2>
+              {section.content.map((block: any, bi: number) => (
+                block.type === "p"
+                  ? <p key={bi} style={{ fontSize: "16px", color: textMid, lineHeight: 1.75, marginBottom: "12px" }}>{block.text}</p>
+                  : <ul key={bi} style={{ paddingLeft: "22px", display: "flex", flexDirection: "column", gap: "10px", marginTop: "8px" }}>
+                      {block.items.map((item: string, ii: number) => (
+                        <li key={ii} style={{ fontSize: "16px", color: textMid, lineHeight: 1.65 }}>{item}</li>
+                      ))}
+                    </ul>
+              ))}
+            </div>
+          ))}
+        </main>
 
-          <section className="bg-[#211f24] border border-[#494551]/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white mb-4">3. Data We Collect</h2>
-            <p className="mb-4">
-              We collect minimal information to operate and improve the service:
-            </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                <strong className="text-white">Usage Analytics:</strong> Anonymous, aggregated telemetry details such as browser type, conversion speed, and selected formats to help optimize server capacity.
-              </li>
-              <li>
-                <strong className="text-white">IP Addresses:</strong> Temporary logging to prevent abuse, rate-limit requests, and protect against security incidents.
-              </li>
-            </ul>
-          </section>
-
-          <section className="bg-[#211f24] border border-[#494551]/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white mb-4">4. Security Infrastructure</h2>
-            <p>
-              We enforce industry-standard security protocols, including End-to-End SSL/TLS encryption for all uploads and downloads. Access to our internal processing microservices is restricted to secure network perimeters to prevent interception.
-            </p>
-          </section>
-
-          <section className="bg-[#211f24] border border-[#494551]/40 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white mb-4">5. Contact Us</h2>
-            <p>
-              If you have any questions or feedback regarding this Privacy Policy, please contact us at:
-              <br />
-              <span className="text-[#cfbcff] font-semibold mt-2 block">privacy@converto.example.com</span>
-            </p>
-          </section>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-[#141218] border-t border-[#494551]/60 flex justify-center items-center w-full h-12 shrink-0 text-xs text-[#948e9c]">
-        © 2026 CONVERTO. All rights reserved.
-      </footer>
-    </div>
+        <footer style={{ borderTop: `1px solid ${border}`, padding: "20px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+          <span style={{ fontSize: "14px", color: textMute, fontWeight: 600 }}>© 2026 CONVERTO.</span>
+          <div style={{ display: "flex", gap: "24px" }}>
+            <Link href="/privacy" style={{ fontSize: "14px", color: "#6366f1", textDecoration: "none", fontWeight: 500 }}>Privacy Policy</Link>
+            <Link href="/terms" style={{ fontSize: "14px", color: textMute, textDecoration: "none" }}>Terms of Service</Link>
+          </div>
+        </footer>
+      </div>
+    </>
   );
 }
