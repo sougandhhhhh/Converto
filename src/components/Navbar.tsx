@@ -40,31 +40,33 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative px-4 py-2 text-sm font-medium rounded-full transition-colors duration-200 ${
-                    isActive
-                      ? "text-foreground font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-nav-indicator"
-                      className="absolute inset-0 bg-secondary/80 rounded-full -z-10 border border-border/20"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  {link.name}
-                </Link>
-              );
-            })}
-          </nav>
+          {pathname !== "/" && (
+            <nav className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-4 py-2 text-sm font-medium rounded-full transition-colors duration-200 ${
+                      isActive
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-nav-indicator"
+                        className="absolute inset-0 bg-secondary/80 rounded-full -z-10 border border-border/20"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    {link.name}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
         </div>
 
         {/* Right side controls */}
@@ -78,22 +80,38 @@ export default function Navbar() {
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
+          {/* Read FAQ Button (Home Page Only) */}
+          {pathname === "/" && (
+            <button
+              onClick={() => window.dispatchEvent(new Event("open-faq-modal"))}
+              className="touch-target rounded-full p-2 text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition-all focus:outline-none cursor-pointer"
+              aria-label="Read FAQ"
+              title="Read FAQ"
+            >
+              <HelpCircle size={18} />
+            </button>
+          )}
+
           {/* Sign In Mock Trigger */}
-          <button
-            onClick={() => handleLinkClick("/login")}
-            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-foreground text-background hover:opacity-90 transition-all cursor-pointer shadow-sm shadow-foreground/10"
-          >
-            <User size={13} /> Sign In
-          </button>
+          {pathname !== "/" && (
+            <button
+              onClick={() => handleLinkClick("/login")}
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full bg-foreground text-background hover:opacity-90 transition-all cursor-pointer shadow-sm shadow-foreground/10"
+            >
+              <User size={13} /> Sign In
+            </button>
+          )}
 
           {/* Hamburger Menu Icon */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="touch-target p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-full md:hidden transition-all focus:outline-none"
-            aria-label="Toggle mobile menu"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {pathname !== "/" && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="touch-target p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-full md:hidden transition-all focus:outline-none"
+              aria-label="Toggle mobile menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          )}
         </div>
       </div>
 

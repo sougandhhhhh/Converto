@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -90,6 +90,12 @@ export default function HomePage() {
   const [activeFormat, setActiveFormat] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  useEffect(() => {
+    const handleOpenFaq = () => setHelpOpen(true);
+    window.addEventListener("open-faq-modal", handleOpenFaq);
+    return () => window.removeEventListener("open-faq-modal", handleOpenFaq);
+  }, []);
+
   const isDark = theme === "dark";
   const activeConfig = FORMAT_CONFIG.find(f => f.id === activeFormat);
 
@@ -141,19 +147,13 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.45 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md mb-16"
+          className="flex justify-center w-full mb-16"
         >
           <button
             onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 rounded-2xl bg-foreground text-background font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/10"
+            className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-foreground text-background font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/10"
           >
             Start Converting <ArrowRight size={16} />
-          </button>
-          <button
-            onClick={() => setHelpOpen(true)}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 rounded-2xl bg-secondary/80 text-foreground border border-border/40 font-medium hover:bg-secondary transition-all cursor-pointer"
-          >
-            <HelpCircle size={16} /> Read FAQ
           </button>
         </motion.div>
 
@@ -248,28 +248,12 @@ export default function HomePage() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Engineered for Students</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Enterprise Performance. Free of Cost.</h2>
-          <p className="text-muted-foreground sm:text-lg">No storage retention, lightning speed, and absolute file privacy.</p>
+          <p className="text-muted-foreground sm:text-lg">Lightning speed, multi-format pipelines, and secure cloud transit.</p>
         </div>
 
         {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Zero Retention */}
-          <div className="md:col-span-2 flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
-            <div>
-              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 mb-6">
-                <Lock size={20} />
-              </div>
-              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Zero Data Retention</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
-                We believe your files should remain yours. Converto processes all uploaded documents in-memory and executes immediate deletions upon completion. No logs, no background caches, no backups.
-              </p>
-            </div>
-            <div className="mt-8 flex items-center gap-1.5 text-xs font-semibold text-indigo-500 select-none">
-              <ShieldCheck size={14} /> Certified Secure Infrastructure
-            </div>
-          </div>
-
-          {/* Card 2: Speed */}
+          {/* Card 1: Speed */}
           <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 mb-6">
@@ -283,7 +267,7 @@ export default function HomePage() {
             <span className="mt-8 text-xs font-bold text-muted-foreground">Average conversion speed: 1.8s</span>
           </div>
 
-          {/* Card 3: 56+ Formats */}
+          {/* Card 2: 56+ Formats */}
           <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mb-6">
@@ -299,14 +283,14 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Card 4: Secure S3 Storage */}
-          <div className="md:col-span-2 flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
+          {/* Card 3: Secure Cloud Transit */}
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-500 mb-6">
                 <ShieldCheck size={20} />
               </div>
               <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Encrypted Cloud Transit</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 All transport links utilize 256-bit SSL encryption. We coordinate with AWS S3 using presigned URLs to keep files insulated from other server threads during upload transactions.
               </p>
             </div>
@@ -316,37 +300,6 @@ export default function HomePage() {
               <span>AES-256 Client-Side</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS SECTION ── */}
-      <section className="px-4 sm:px-6 lg:px-8 py-20 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">User Stories</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Loved by Students Worldwide</h2>
-          <p className="text-muted-foreground sm:text-lg">Here's how students are converting their assignments and research papers.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { quote: "Converto is a lifesaver. Converting class slides into PDFs for tablet note-taking is instant. Best of all, it's free and doesn't limit my uploads.", author: "Marcus Vance", role: "Computer Science Student, Stanford" },
-            { quote: "I convert a lot of spreadsheets to PDF reports. Most free converters break tables, but Converto keeps layout formats perfect. Zero layout bugs so far.", author: "Sophia Lin", role: "Finance Student, NYU" },
-            { quote: "Having no retention policy makes me comfortable converting personal project documentation and drafts. Absolute security is rare in free utilities.", author: "Liam O'Connor", role: "Graduate Researcher, MIT" }
-          ].map((t, idx) => (
-            <div key={idx} className="flex flex-col justify-between p-8 rounded-2xl border border-border/30 bg-card/40 backdrop-blur-sm">
-              <Quote size={24} className="text-indigo-500/30 mb-6" />
-              <p className="text-sm text-foreground/80 leading-relaxed mb-6 font-medium">"{t.quote}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-xs text-foreground uppercase border border-border/40">
-                  {t.author.charAt(0)}
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-foreground">{t.author}</h4>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{t.role}</p>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -370,7 +323,7 @@ export default function HomePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className="relative w-full max-w-2xl bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col justify-between"
+              className="relative w-full max-w-2xl bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col justify-between"
             >
               <div>
                 <button 
@@ -404,7 +357,7 @@ export default function HomePage() {
                 <div className="h-px bg-border/40 my-6" />
 
                 {/* Target Options Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[45vh] pr-2 scrollbar-thin">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {SUB_BUTTONS[activeFormat]?.map((sub) => {
                     const [, toFmt] = sub.label.split("→").map(s => s.trim());
                     return (
