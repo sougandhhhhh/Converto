@@ -3,7 +3,7 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
-  HelpCircle, ArrowLeft, UploadCloud, FileText,
+  ArrowLeft, UploadCloud, FileText,
   X, RefreshCw, CheckCircle2, AlertCircle,
   Plus, Download, Zap
 } from "lucide-react";
@@ -246,7 +246,6 @@ export default function ConvertPage() {
   const { theme } = useTheme();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [forceConvertAll, setForceConvertAll] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -283,7 +282,7 @@ export default function ConvertPage() {
           href="/" 
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground mb-8 transition-colors"
         >
-          <ArrowLeft size={13} /> Back to all tools
+          <ArrowLeft size={13} /> Back
         </Link>
 
         {/* Heading Panel */}
@@ -308,12 +307,7 @@ export default function ConvertPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setHelpOpen(true)}
-            className="flex items-center justify-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground touch-target"
-          >
-            <HelpCircle size={15} /> Help
-          </button>
+
         </div>
 
         {/* Converter Area */}
@@ -422,62 +416,7 @@ export default function ConvertPage() {
       {/* Global Footer */}
       <Footer />
 
-      {/* FAQ Modal */}
-      <AnimatePresence>
-        {helpOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setHelpOpen(false)}
-              className="absolute inset-0 bg-black/75 backdrop-blur-md"
-            />
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              className="relative w-full max-w-lg bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-hidden shadow-2xl flex flex-col justify-between"
-            >
-              <div>
-                <button 
-                  onClick={() => setHelpOpen(false)}
-                  className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
-                >
-                  <X size={16} />
-                </button>
 
-                <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground mb-6 flex items-center gap-2">
-                  <HelpCircle size={18} className="text-indigo-500" /> FAQ & Guidance
-                </h3>
-
-                <div className="space-y-4 overflow-y-auto max-h-[50vh] pr-2">
-                  {[
-                    { q: "How do I convert a file?", a: "Select your source format from the grid, pick your target output format, drag & drop your file, then click Convert. Download starts instantly." },
-                    { q: "Are my files stored?", a: "No. Files are processed in-memory and deleted immediately after conversion. We maintain a strict zero-retention policy." },
-                    { q: "What is Sandbox Mode?", a: "When the LibreOffice container is offline, sandbox mode handles conversions with a styled fallback. All conversions work in production." },
-                    { q: "What is the file size limit?", a: "Files up to 50 MB are accepted to ensure fast response times and efficient server memory usage." },
-                  ].map(({ q, a }, idx) => (
-                    <div key={idx} className="p-4 rounded-xl border border-border/30 bg-secondary/10">
-                      <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1.5">{q}</h4>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">{a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => setHelpOpen(false)}
-                className="mt-6 w-full py-3 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 transition-all cursor-pointer"
-              >
-                Close FAQ
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

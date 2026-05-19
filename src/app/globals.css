@@ -103,6 +103,19 @@
     @apply font-sans scroll-smooth;
     font-family: var(--font-sans);
   }
+
+  /* Custom Scrollbar Styles matching Privacy Policy */
+  ::-webkit-scrollbar {
+    width: 6.5px;
+    height: 6.5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    border-radius: 4px;
+  }
 }
 
 @layer utilities {

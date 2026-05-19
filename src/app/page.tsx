@@ -7,7 +7,7 @@ import {
   FileText, FileSpreadsheet, FileImage,
   Presentation, FileCode, X, ShieldCheck,
   ArrowRight, Zap, Lock, Layers, ChevronRight,
-  HelpCircle, Sparkles, Star, Quote, ArrowUpRight
+  Sparkles, Star, ArrowUpRight
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";

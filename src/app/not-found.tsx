@@ -45,7 +45,7 @@ export default function NotFound() {
             href="/"
             className="flex items-center justify-center gap-1.5 px-6 py-3 rounded-2xl bg-foreground text-background font-bold text-xs hover:opacity-90 transition-all"
           >
-            <ArrowLeft size={13} /> Back to Home
+            <ArrowLeft size={13} /> Back
           </Link>
           <Link
             href="/tools"
