@@ -33,6 +33,454 @@ const OUTPUT_CONTENT_TYPES: Record<string, string> = {
   ".avif": "image/avif",
 };
 
+interface ExtractedContent {
+  text: string;
+  lines: string[];
+  tables?: string[][][];
+  metadata?: Record<string, any>;
+}
+
+async function extractSourceContent(buffer: Buffer, format: string): Promise<ExtractedContent> {
+  const cleanFormat = format.toLowerCase();
+  
+  if ([".xlsx", ".xls", ".csv"].includes(cleanFormat)) {
+    try {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const tables: string[][][] = [];
+      const lines: string[] = [];
+      
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+        const tableRows: string[][] = rows.map(r => 
+          (Array.isArray(r) ? r : []).map(cell => cell !== null && cell !== undefined ? String(cell) : "")
+        );
+        tables.push(tableRows);
+        lines.push(`--- Sheet: ${sheetName} ---`);
+        for (const row of tableRows) {
+          lines.push(row.join(" | "));
+        }
+      }
+      
+      return {
+        text: lines.join("\n"),
+        lines,
+        tables,
+        metadata: { format: cleanFormat.replace(".", "").toUpperCase(), sheetNames: workbook.SheetNames }
+      };
+    } catch (e) {
+      console.error("Failed to parse sheet data", e);
+    }
+  }
+  
+  if ([".docx", ".doc"].includes(cleanFormat)) {
+    try {
+      const result = await mammoth.extractRawText({ buffer });
+      const text = result.value;
+      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      return {
+        text,
+        lines,
+        metadata: { format: cleanFormat.replace(".", "").toUpperCase() }
+      };
+    } catch (e) {
+      console.error("Failed to parse Word doc", e);
+    }
+  }
+  
+  if ([".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".avif"].includes(cleanFormat)) {
+    try {
+      const meta = await sharp(buffer).metadata();
+      const info = [
+        `Image Name: Source Image`,
+        `Format: ${(meta.format || "").toUpperCase()}`,
+        `Width: ${meta.width} px`,
+        `Height: ${meta.height} px`,
+        `Color Space: ${meta.space || "unknown"}`,
+        `Channels: ${meta.channels || "unknown"}`
+      ];
+      const { format: sharpFormat, ...metaWithoutFormat } = meta;
+      return {
+        text: info.join("\n"),
+        lines: info,
+        metadata: { format: cleanFormat.replace(".", "").toUpperCase(), ...metaWithoutFormat }
+      };
+    } catch (e) {
+      console.error("Failed to parse image metadata", e);
+    }
+  }
+  
+  try {
+    const text = buffer.toString("utf-8");
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    return {
+      text,
+      lines,
+      metadata: { format: cleanFormat.replace(".", "").toUpperCase() }
+    };
+  } catch (e) {
+    return {
+      text: "Binary Content",
+      lines: ["Binary Content"],
+      metadata: { format: cleanFormat.replace(".", "").toUpperCase() }
+    };
+  }
+}
+
+async function generateDocx(content: ExtractedContent, filename: string): Promise<Buffer> {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType } = await import("docx");
+  
+  const children: any[] = [];
+  
+  children.push(new Paragraph({
+    spacing: { after: 200 },
+    children: [
+      new TextRun({
+        text: `CONVERTED DOCUMENT: ${filename}`,
+        bold: true,
+        size: 28,
+        color: "2B579A",
+        font: "Calibri"
+      })
+    ]
+  }));
+  
+  children.push(new Paragraph({
+    spacing: { after: 300 },
+    children: [
+      new TextRun({ text: "Source Format: ", bold: true, size: 20, font: "Calibri" }),
+      new TextRun({ text: `${content.metadata?.format || "Document/Data"}`, size: 20, font: "Calibri" }),
+      new TextRun({ text: "  |  Converted On: ", bold: true, size: 20, font: "Calibri" }),
+      new TextRun({ text: `${new Date().toLocaleString()}`, size: 20, font: "Calibri" })
+    ]
+  }));
+  
+  children.push(new Paragraph({
+    spacing: { after: 200 },
+    children: [
+      new TextRun({ text: "──────────────────────────────────────────────────", color: "D3D3D3", font: "Calibri" })
+    ]
+  }));
+  
+  if (content.tables && content.tables.length > 0) {
+    for (let t = 0; t < content.tables.length; t++) {
+      const tableData = content.tables[t];
+      const sheetName = content.metadata?.sheetNames?.[t] || `Table ${t + 1}`;
+      
+      children.push(new Paragraph({
+        spacing: { before: 200, after: 100 },
+        children: [
+          new TextRun({ text: sheetName, bold: true, size: 24, color: "2B579A", font: "Calibri" })
+        ]
+      }));
+      
+      if (tableData.length === 0) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: "[Empty Sheet]", italics: true, font: "Calibri" })]
+        }));
+        continue;
+      }
+      
+      const docxRows: any[] = [];
+      for (let r = 0; r < tableData.length; r++) {
+        const rowData = tableData[r];
+        const cells: any[] = rowData.map((val) => {
+          return new TableCell({
+            width: { size: 100 / Math.max(rowData.length, 1), type: WidthType.PERCENTAGE },
+            margins: { top: 100, bottom: 100, left: 150, right: 150 },
+            shading: r === 0 ? { fill: "F2F2F2" } : undefined,
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: String(val),
+                    bold: r === 0,
+                    size: 20,
+                    font: "Calibri"
+                  })
+                ]
+              })
+            ]
+          });
+        });
+        docxRows.push(new TableRow({ children: cells }));
+      }
+      
+      children.push(new Table({
+        rows: docxRows,
+        width: { size: 100, type: WidthType.PERCENTAGE }
+      }));
+    }
+  } else {
+    for (const line of content.lines) {
+      const isHeader = line.startsWith("#") || line.toUpperCase() === line && line.length < 50;
+      const cleanLine = line.replace(/^#+\s*/, "");
+      
+      children.push(new Paragraph({
+        spacing: { before: isHeader ? 150 : 0, after: 100 },
+        children: [
+          new TextRun({
+            text: cleanLine,
+            bold: isHeader,
+            size: isHeader ? 24 : 22,
+            color: isHeader ? "2B579A" : "333333",
+            font: "Calibri"
+          })
+        ]
+      }));
+    }
+  }
+  
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children
+    }]
+  });
+  
+  return await Packer.toBuffer(doc);
+}
+
+async function generateXlsx(content: ExtractedContent): Promise<Buffer> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+  
+  if (content.tables && content.tables.length > 0) {
+    for (let t = 0; t < content.tables.length; t++) {
+      const tableData = content.tables[t];
+      const sheetName = content.metadata?.sheetNames?.[t] || `Sheet${t + 1}`;
+      const ws = XLSX.utils.aoa_to_sheet(tableData);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+    }
+  } else {
+    const rows = content.lines.map(line => {
+      if (line.includes(" | ")) return line.split(" | ");
+      if (line.includes("\t")) return line.split("\t");
+      return [line];
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+  }
+  
+  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+}
+
+async function generatePptx(content: ExtractedContent, filename: string): Promise<Buffer> {
+  const PptxGenJSClass = (await import("pptxgenjs")).default;
+  const pres = new PptxGenJSClass();
+  
+  const titleSlide = pres.addSlide();
+  titleSlide.background = { fill: "F8F9FA" };
+  
+  titleSlide.addText(`CONVERTED PRESENTATION`, {
+    x: 0.5,
+    y: 2.0,
+    w: 9.0,
+    h: 1.0,
+    fontSize: 36,
+    bold: true,
+    color: "2B579A",
+    fontFace: "Arial"
+  });
+  
+  titleSlide.addText(`File: ${filename}\nSource Format: ${content.metadata?.format || "Document/Data"}\nConverted: ${new Date().toLocaleString()}`, {
+    x: 0.5,
+    y: 3.2,
+    w: 9.0,
+    h: 2.0,
+    fontSize: 16,
+    color: "555555",
+    fontFace: "Arial"
+  });
+  
+  if (content.tables && content.tables.length > 0) {
+    for (let t = 0; t < content.tables.length; t++) {
+      const tableData = content.tables[t];
+      const sheetName = content.metadata?.sheetNames?.[t] || `Sheet ${t + 1}`;
+      
+      const slide = pres.addSlide();
+      slide.background = { fill: "F8F9FA" };
+      
+      slide.addText(sheetName, {
+        x: 0.5,
+        y: 0.5,
+        w: 9.0,
+        h: 0.6,
+        fontSize: 22,
+        bold: true,
+        color: "2B579A",
+        fontFace: "Arial"
+      });
+      
+      if (tableData.length > 0) {
+        const pptxTableRows: any[] = [];
+        const maxRows = Math.min(tableData.length, 12);
+        for (let r = 0; r < maxRows; r++) {
+          const rowData = tableData[r];
+          const rowCells = rowData.map(val => {
+            return {
+              text: String(val),
+              options: {
+                bold: r === 0,
+                fill: r === 0 ? "F2F2F2" : undefined,
+                color: r === 0 ? "2B579A" : "333333",
+                fontFace: "Arial",
+                fontSize: 10
+              }
+            };
+          });
+          pptxTableRows.push(rowCells);
+        }
+        
+        slide.addTable(pptxTableRows, {
+          x: 0.5,
+          y: 1.3,
+          w: 9.0,
+          h: 5.0,
+          border: { type: "solid", pt: 1, color: "D3D3D3" }
+        });
+      } else {
+        slide.addText("[Empty Sheet]", { x: 0.5, y: 1.5, fontSize: 14, italic: true });
+      }
+    }
+  } else {
+    const lines = content.lines;
+    let currentSlide = pres.addSlide();
+    currentSlide.background = { fill: "F8F9FA" };
+    currentSlide.addText(filename, {
+      x: 0.5,
+      y: 0.5,
+      w: 9.0,
+      h: 0.6,
+      fontSize: 22,
+      bold: true,
+      color: "2B579A",
+      fontFace: "Arial"
+    });
+    
+    let bulletPoints: string[] = [];
+    let bulletCount = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      bulletPoints.push(lines[i]);
+      bulletCount++;
+      
+      if (bulletCount >= 7 || i === lines.length - 1) {
+        currentSlide.addText(bulletPoints.join("\n\n"), {
+          x: 0.5,
+          y: 1.3,
+          w: 9.0,
+          h: 5.0,
+          fontSize: 14,
+          color: "333333",
+          fontFace: "Arial",
+          bullet: true
+        });
+        
+        if (i < lines.length - 1) {
+          currentSlide = pres.addSlide();
+          currentSlide.background = { fill: "F8F9FA" };
+          currentSlide.addText(filename, {
+            x: 0.5,
+            y: 0.5,
+            w: 9.0,
+            h: 0.6,
+            fontSize: 22,
+            bold: true,
+            color: "2B579A",
+            fontFace: "Arial"
+          });
+          bulletPoints = [];
+          bulletCount = 0;
+        }
+      }
+    }
+  }
+  
+  const buffer = await pres.write({ outputType: "nodebuffer" }) as Buffer;
+  return buffer;
+}
+
+function escapeXml(unsafe: string): string {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case "&": return "&amp;";
+      case "'": return "&apos;";
+      case "\"": return "&quot;";
+      default: return c;
+    }
+  });
+}
+
+async function generateCsv(content: ExtractedContent): Promise<Buffer> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+  
+  let ws: any;
+  if (content.tables && content.tables.length > 0) {
+    ws = XLSX.utils.aoa_to_sheet(content.tables[0]);
+  } else {
+    const rows = content.lines.map(line => {
+      if (line.includes(" | ")) return line.split(" | ");
+      if (line.includes("\t")) return line.split("\t");
+      return [line];
+    });
+    ws = XLSX.utils.aoa_to_sheet(rows);
+  }
+  
+  const csvContent = XLSX.utils.sheet_to_csv(ws);
+  return Buffer.from(csvContent, "utf-8");
+}
+
+function generateJson(content: ExtractedContent, filename: string): Buffer {
+  const jsonContent = JSON.stringify({
+    status: "success",
+    timestamp: new Date().toISOString(),
+    filename,
+    metadata: content.metadata || {},
+    tables: content.tables || [],
+    text: content.text,
+    lines: content.lines
+  }, null, 2);
+  
+  return Buffer.from(jsonContent, "utf-8");
+}
+
+function generateXml(content: ExtractedContent, filename: string): Buffer {
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<document>\n`;
+  xml += `  <filename>${escapeXml(filename)}</filename>\n`;
+  xml += `  <timestamp>${new Date().toISOString()}</timestamp>\n`;
+  
+  if (content.tables && content.tables.length > 0) {
+    xml += `  <tables>\n`;
+    for (let t = 0; t < content.tables.length; t++) {
+      const sheetName = content.metadata?.sheetNames?.[t] || `Sheet_${t + 1}`;
+      xml += `    <table name="${escapeXml(sheetName)}">\n`;
+      for (const row of content.tables[t]) {
+        xml += `      <row>\n`;
+        for (const cell of row) {
+          xml += `        <cell>${escapeXml(cell)}</cell>\n`;
+        }
+        xml += `      </row>\n`;
+      }
+      xml += `    </table>\n`;
+    }
+    xml += `  </tables>\n`;
+  } else {
+    xml += `  <paragraphs>\n`;
+    for (const line of content.lines) {
+      xml += `    <paragraph>${escapeXml(line)}</paragraph>\n`;
+    }
+    xml += `  </paragraphs>\n`;
+  }
+  
+  xml += `</document>`;
+  return Buffer.from(xml, "utf-8");
+}
+
 /**
  * Handles the conversion API requests
  * @param req The NextRequest containing multipart form data
@@ -276,11 +724,8 @@ export async function POST(req: NextRequest) {
       else image = image.jpeg();
       outputBuffer = await image.toBuffer();
     }
-    // 5. Document to Text/HTML/CSV/ZIP
-    else if (to === ".txt") {
-      const textContent = `CONVERTO conversion output\nFile Name: ${file.name}\nSource Format: ${format.toUpperCase()}\nConverted to: TXT\nTimestamp: ${new Date().toISOString()}\nSize: ${file.size} bytes\n\n[Content processed successfully]`;
-      outputBuffer = Buffer.from(textContent, "utf-8");
-    } else if (to === ".html") {
+    // 5. Document to Text/HTML/CSV/ZIP/Office OOXML
+    else if (to === ".html") {
       let htmlContent = "";
       if (format === ".docx" || format === ".doc") {
         try {
@@ -352,111 +797,42 @@ export async function POST(req: NextRequest) {
 </html>`;
       }
       outputBuffer = Buffer.from(htmlContent, "utf-8");
-    } else if (to === ".csv") {
-      const csvContent = `"File Name","Original Format","Target Format","Bytes"\n"${file.name}","${format.toUpperCase()}","CSV","${file.size}"`;
-      outputBuffer = Buffer.from(csvContent, "utf-8");
-    } else if (to === ".zip") {
-      const zipHeader = Buffer.from([
-        0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00
-      ]);
-      outputBuffer = Buffer.concat([zipHeader, buffer]);
-    } else if (to === ".docx") {
-      const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.15; }
-    h1 { font-size: 18pt; color: #2B579A; }
-    p { margin-bottom: 6pt; }
-    table { border-collapse: collapse; width: 100%; margin-top: 12pt; }
-    th, td { border: 1px solid #D3D3D3; padding: 6px; text-align: left; }
-    th { background-color: #F2F2F2; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <h1>Converto: XLSX to DOCX Document Conversion</h1>
-  <p><strong>File Name:</strong> ${file.name}</p>
-  <p><strong>Source Format:</strong> XLSX</p>
-  <p><strong>Target Format:</strong> DOCX</p>
-  <p><strong>Converted On:</strong> ${new Date().toLocaleString()}</p>
-  <p><strong>Original File Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
-  
-  <br/>
-  <h2>Spreadsheet Content Summary</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Sheet Name</th>
-        <th>Rows Count</th>
-        <th>Columns Count</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Sheet1</td>
-        <td>15</td>
-        <td>8</td>
-        <td>Successfully converted to document layout</td>
-      </tr>
-    </tbody>
-  </table>
-</body>
-</html>`;
-      outputBuffer = Buffer.from(htmlContent, "utf-8");
-    } else if (to === ".json") {
-      const jsonContent = JSON.stringify({
-        status: "success",
-        tool: "CONVERTO",
-        timestamp: new Date().toISOString(),
-        file: {
-          name: file.name,
-          size_bytes: file.size,
-          source_format: format.toUpperCase().replace(".", ""),
-          target_format: "JSON"
-        },
-        data: [
-          {
-            sheet: "Sheet1",
-            rows: [
-              { id: 1, columns: ["Header 1", "Header 2", "Header 3"] },
-              { id: 2, columns: ["Value A1", "Value B1", "Value C1"] },
-              { id: 3, columns: ["Value A2", "Value B2", "Value C2"] }
-            ]
+    } else if ([".txt", ".csv", ".zip", ".docx", ".xlsx", ".pptx", ".json", ".xml"].includes(to)) {
+      const content = await extractSourceContent(buffer, format);
+      
+      if (to === ".txt") {
+        outputBuffer = Buffer.from(content.text, "utf-8");
+      } else if (to === ".csv") {
+        outputBuffer = await generateCsv(content);
+      } else if (to === ".docx") {
+        outputBuffer = await generateDocx(content, file.name);
+      } else if (to === ".xlsx") {
+        outputBuffer = await generateXlsx(content);
+      } else if (to === ".pptx") {
+        outputBuffer = await generatePptx(content, file.name);
+      } else if (to === ".json") {
+        outputBuffer = generateJson(content, file.name);
+      } else if (to === ".xml") {
+        outputBuffer = generateXml(content, file.name);
+      } else if (to === ".zip") {
+        const AdmZip = (await import("adm-zip")).default;
+        const zip = new AdmZip();
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+        
+        if (content.tables && content.tables.length > 0) {
+          const XLSX = await import("xlsx");
+          for (let t = 0; t < content.tables.length; t++) {
+            const tableData = content.tables[t];
+            const sheetName = content.metadata?.sheetNames?.[t] || `Sheet_${t + 1}`;
+            const ws = XLSX.utils.aoa_to_sheet(tableData);
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            zip.addFile(`${cleanName}_${sheetName}.csv`, Buffer.from(csv, "utf-8"));
           }
-        ]
-      }, null, 2);
-      outputBuffer = Buffer.from(jsonContent, "utf-8");
-    } else if (to === ".xml") {
-      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<conversion>
-  <status>success</status>
-  <tool>CONVERTO</tool>
-  <timestamp>${new Date().toISOString()}</timestamp>
-  <file>
-    <name>${file.name}</name>
-    <size_bytes>${file.size}</size_bytes>
-    <source_format>${format.toUpperCase().replace(".", "")}</source_format>
-    <target_format>XML</target_format>
-  </file>
-  <data>
-    <sheet name="Sheet1">
-      <row index="1">
-        <cell col="1">Header 1</cell>
-        <cell col="2">Header 2</cell>
-        <cell col="3">Header 3</cell>
-      </row>
-      <row index="2">
-        <cell col="1">Value A1</cell>
-        <cell col="2">Value B1</cell>
-        <cell col="3">Value C1</cell>
-      </row>
-    </sheet>
-  </data>
-</conversion>`;
-      outputBuffer = Buffer.from(xmlContent, "utf-8");
+        } else {
+          zip.addFile(`${cleanName}.txt`, Buffer.from(content.text, "utf-8"));
+        }
+        outputBuffer = zip.toBuffer();
+      }
     }
     // 6. Generic Fallback
     else {
