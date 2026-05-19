@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useConvert } from "@/hooks/useConvert";
+import { useConvert, ConvertStatus } from "@/hooks/useConvert";
 import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -73,8 +73,9 @@ function getConfigForSlug(slug: string) {
 
 interface FileItem { id: string; file: File; }
 
-function FileRow({ item, config, onRemove, forceConvert }: {
+function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
   item: FileItem; config: any; onRemove: (id: string) => void; forceConvert: boolean;
+  onStatusChange?: (id: string, status: ConvertStatus, downloadUrl: string | null) => void;
 }) {
   const { convert, status, error, progress, downloadUrl } = useConvert();
   const { theme } = useTheme();
@@ -83,6 +84,12 @@ function FileRow({ item, config, onRemove, forceConvert }: {
   useEffect(() => {
     if (forceConvert && status === "idle") convert(item.file, config.from, config.to);
   }, [forceConvert, status, convert, item.file, config.from, config.to]);
+
+  useEffect(() => {
+    if (onStatusChange) {
+      onStatusChange(item.id, status, downloadUrl);
+    }
+  }, [status, downloadUrl, item.id, onStatusChange]);
 
   const accent = config.accent ?? "#6366f1";
   const isProcessing = status === "uploading" || status === "converting";
@@ -246,6 +253,44 @@ export default function ConvertPage() {
   const { theme } = useTheme();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [forceConvertAll, setForceConvertAll] = useState(false);
+  const [fileStates, setFileStates] = useState<Record<string, { status: ConvertStatus; downloadUrl: string | null }>>({});
+
+  const handleStatusChange = useCallback((id: string, status: ConvertStatus, downloadUrl: string | null) => {
+    setFileStates(prev => {
+      if (prev[id]?.status === status && prev[id]?.downloadUrl === downloadUrl) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [id]: { status, downloadUrl }
+      };
+    });
+  }, []);
+
+  const handleRemove = useCallback((id: string) => {
+    setFiles(prev => prev.filter(f => f.id !== id));
+    setFileStates(prev => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  }, []);
+
+  const handleDownloadAll = useCallback(() => {
+    files.forEach(f => {
+      const url = fileStates[f.id]?.downloadUrl;
+      if (url) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = f.file.name.replace(/\.[^/.]+$/, "") + config.to;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    });
+  }, [files, fileStates, config.to]);
+
+  const allConverted = files.length > 0 && files.every(f => fileStates[f.id]?.status === "done");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -374,8 +419,9 @@ export default function ConvertPage() {
                       key={item.id} 
                       item={item} 
                       config={config} 
-                      onRemove={id => setFiles(prev => prev.filter(f => f.id !== id))} 
+                      onRemove={handleRemove} 
                       forceConvert={forceConvertAll} 
+                      onStatusChange={handleStatusChange}
                     />
                   ))}
                 </AnimatePresence>
@@ -396,15 +442,31 @@ export default function ConvertPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setForceConvertAll(true);
+                      if (allConverted) {
+                        handleDownloadAll();
+                      } else {
+                        setForceConvertAll(true);
+                      }
                     }}
                     className="flex items-center justify-center gap-1.5 w-full sm:w-1/2 py-3 px-5 rounded-2xl text-sm font-bold text-white shadow-lg cursor-pointer transition-all duration-150 hover:opacity-95 hover:scale-[1.01] active:scale-[0.99]"
                     style={{
-                      background: `linear-gradient(135deg, ${accent}, ${accent}dd)`,
-                      boxShadow: `0 8px 24px ${accent}25`
+                      background: allConverted
+                        ? "linear-gradient(135deg, #10b981, #059669)"
+                        : `linear-gradient(135deg, ${accent}, ${accent}dd)`,
+                      boxShadow: allConverted
+                        ? "0 8px 24px rgba(16,185,129,0.25)"
+                        : `0 8px 24px ${accent}25`
                     }}
                   >
-                    <Zap size={15} /> {files.length > 1 ? "Convert All" : "Convert"}
+                    {allConverted ? (
+                      <>
+                        <Download size={15} /> {files.length > 1 ? "Download All" : "Download"}
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={15} /> {files.length > 1 ? "Convert All" : "Convert"}
+                      </>
+                    )}
                   </button>
                 </div>
               )}
