@@ -132,7 +132,7 @@ export default function HomePage() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10"
         >
-          PDF, Word, Excel, PowerPoint, images &mdash; convert between 56+ formats with zero quality loss. Built for students, trusted by professionals.
+          PDF, Word, Excel, PowerPoint, images &mdash; convert between 68+ formats with zero quality loss. Built for students, trusted by professionals.
         </motion.p>
 
         {/* Action Buttons */}
@@ -158,7 +158,7 @@ export default function HomePage() {
           className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl p-6 rounded-3xl glassmorphism glass-card border-border/40"
         >
           {[
-            { value: "56+", label: "Conversion Formats" },
+            { value: "68+", label: "Conversion Formats" },
             { value: "100%", label: "Free to Use" },
             { value: "Unlimited", label: "Daily Conversions" },
             { value: "Zero", label: "File Retention" }
@@ -260,7 +260,7 @@ export default function HomePage() {
             <span className="mt-8 text-xs font-bold text-muted-foreground">Average conversion speed: 1.8s</span>
           </div>
 
-          {/* Card 2: 56+ Formats */}
+          {/* Card 2: 68+ Formats */}
           <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mb-6">

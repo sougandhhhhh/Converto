@@ -26,7 +26,7 @@ export default function TermsPage() {
     },
     {
       title: "2. Description of Service",
-      paras: ["Converto is a free, browser-based file conversion platform that converts documents, spreadsheets, presentations, and images between 56+ formats. The Service is provided free of charge for personal and educational use."],
+      paras: ["Converto is a free, browser-based file conversion platform that converts documents, spreadsheets, presentations, and images between 68+ formats. The Service is provided free of charge for personal and educational use."],
       items: [] as string[],
     },
     {
