@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from app.engine.registry import get_handler, register_handler
+from app.engine.strategy import get_route_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ def dispatch_conversion(input_path: Path, output_dir: Path, from_ext: str, to_ex
     to_ext = to_ext.lower()
     
     logger.info(f"Dispatching conversion: {input_path.name} ({from_ext.upper()} -> {to_ext.upper()})")
+    logger.info("Route strategy: %s", " -> ".join(get_route_strategy(from_ext, to_ext)))
     
     # Resolve the handler
     handler = get_handler(from_ext, to_ext)

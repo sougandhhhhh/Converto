@@ -32,10 +32,10 @@ class PDFHandler(BaseHandler):
         output_dir = output_path.parent
 
         logger.info(f"PDFHandler converting PDF -> {to_ext}")
+        pdf_source = self._normalize_pdf(input_path)
 
         # Detect if PDF is scanned (little to no extractable text)
-        is_scanned = self._is_scanned_pdf(input_path)
-        pdf_source = input_path
+        is_scanned = self._is_scanned_pdf(pdf_source)
 
         if is_scanned:
             logger.info("Scanned PDF detected. Triggering OCRmyPDF pipeline...")
@@ -75,6 +75,25 @@ class PDFHandler(BaseHandler):
                     pdf_source.unlink()
                 except Exception as e:
                     logger.warning(f"Failed to delete temp OCR PDF: {e}")
+            normalized_pdf = input_path.parent / f"{input_path.stem}_normalized.pdf"
+            if normalized_pdf.exists() and normalized_pdf != input_path:
+                try:
+                    normalized_pdf.unlink()
+                except Exception:
+                    pass
+
+    def _normalize_pdf(self, input_path: Path) -> Path:
+        normalized = input_path.parent / f"{input_path.stem}_normalized.pdf"
+        try:
+            self.run_subprocess(
+                ["qpdf", "--linearize", str(input_path), str(normalized)],
+                timeout=60,
+            )
+            if normalized.exists() and normalized.stat().st_size > 0:
+                return normalized
+        except Exception as e:
+            logger.warning(f"qpdf normalization skipped: {e}")
+        return input_path
 
     def _is_scanned_pdf(self, pdf_path: Path) -> bool:
         """
@@ -243,14 +262,28 @@ class PDFHandler(BaseHandler):
         """
         Extracts plain text.
         """
-        with pdfplumber.open(pdf_path) as pdf:
-            content = []
-            for idx, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text:
-                    content.append(text)
-            
-            output_path.write_text("\n\n--- PAGE BREAK ---\n\n".join(content), encoding="utf-8")
+        content = []
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for idx, page in enumerate(pdf.pages):
+                    text = page.extract_text()
+                    if text:
+                        content.append(text)
+        except Exception as e:
+            logger.warning(f"pdfplumber text extraction failed: {e}")
+
+        if not content:
+            try:
+                txt = self.run_subprocess(
+                    ["mutool", "draw", "-F", "txt", str(pdf_path)],
+                    timeout=60,
+                )
+                if txt.strip():
+                    content.append(txt.strip())
+            except Exception as e:
+                logger.warning(f"mutool text fallback failed: {e}")
+
+        output_path.write_text("\n\n--- PAGE BREAK ---\n\n".join(content), encoding="utf-8")
         return output_path
 
     def _to_image(self, pdf_path: Path, output_path: Path, to_ext: str) -> Path:

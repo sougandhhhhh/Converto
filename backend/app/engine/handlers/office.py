@@ -2,6 +2,7 @@ import os
 import shutil
 import zipfile
 import logging
+import tempfile
 from pathlib import Path
 import pandas as pd
 from docx import Document
@@ -81,6 +82,8 @@ class OfficeHandler(BaseHandler):
             return self._pptx_to_docx(input_path, output_path)
         if from_ext == ".pptx" and to_ext == ".txt":
             return self._pptx_to_txt(input_path, output_path)
+        if from_ext == ".pptx" and to_ext == ".html":
+            return self._pptx_to_html(input_path, output_path)
         if from_ext == ".xlsx" and to_ext == ".docx":
             return self._xlsx_to_docx(input_path, output_path)
 
@@ -88,12 +91,12 @@ class OfficeHandler(BaseHandler):
         # Map target extension to LibreOffice filter formats
         format_map = {
             ".pdf": "pdf",
-            ".docx": "docx",
-            ".pptx": "pptx",
-            ".xlsx": "xlsx",
+            ".docx": "docx:MS Word 2007 XML",
+            ".pptx": "pptx:Impress MS PowerPoint 2007 XML",
+            ".xlsx": "xlsx:Calc MS Excel 2007 XML",
             ".txt": "txt:Text",
-            ".csv": "csv",
-            ".html": "html",
+            ".csv": "csv:Text - txt - csv (StarCalc)",
+            ".html": "html:XHTML Writer File",
         }
 
         lo_format = format_map.get(to_ext)
@@ -108,18 +111,25 @@ class OfficeHandler(BaseHandler):
         Executes a LibreOffice headless conversion command.
         """
         temp_outdir = output_path.parent
-        cmd = [
-            "libreoffice",
-            "--headless",
-            "--convert-to",
-            lo_format,
-            "--outdir",
-            str(temp_outdir),
-            str(input_path),
-        ]
+        with tempfile.TemporaryDirectory(prefix="lo-profile-") as profile_dir:
+            profile_uri = Path(profile_dir).resolve().as_uri()
+            cmd = [
+                "libreoffice",
+                "--headless",
+                f"-env:UserInstallation={profile_uri}",
+                "--nologo",
+                "--nodefault",
+                "--nolockcheck",
+                "--norestore",
+                "--convert-to",
+                lo_format,
+                "--outdir",
+                str(temp_outdir),
+                str(input_path),
+            ]
 
-        logger.info(f"Executing LibreOffice: {' '.join(cmd)}")
-        self.run_subprocess(cmd, timeout=90)
+            logger.info(f"Executing LibreOffice: {' '.join(cmd)}")
+            self.run_subprocess(cmd, timeout=120)
 
         # LibreOffice names the output file by replacing the input suffix with the target suffix
         expected_suffix = output_path.suffix
@@ -219,4 +229,27 @@ class OfficeHandler(BaseHandler):
             for _, row in df.iterrows():
                 doc.add_paragraph(" | ".join([str(v) for v in row.tolist()]))
         doc.save(output_path)
+        return output_path
+
+    def _pptx_to_html(self, input_path: Path, output_path: Path) -> Path:
+        prs = Presentation(input_path)
+        sections = []
+        for slide_index, slide in enumerate(prs.slides, start=1):
+            lines = []
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    text = shape.text.strip()
+                    if text:
+                        lines.append(text)
+            body = "".join(f"<p>{line}</p>" for line in lines) if lines else "<p>(No text content)</p>"
+            sections.append(f"<section><h2>Slide {slide_index}</h2>{body}</section>")
+        html = (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+            f"<title>{input_path.stem}</title>"
+            "<style>body{font-family:Arial,sans-serif;margin:24px;}section{margin-bottom:18px;}h2{margin-bottom:8px;}</style>"
+            "</head><body>"
+            + "".join(sections)
+            + "</body></html>"
+        )
+        output_path.write_text(html, encoding="utf-8")
         return output_path

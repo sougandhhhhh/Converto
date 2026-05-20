@@ -19,13 +19,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Tesseract OCR & English model
     tesseract-ocr \
     tesseract-ocr-eng \
+    tesseract-ocr-osd \
+    tesseract-ocr-spa \
+    tesseract-ocr-fra \
+    tesseract-ocr-deu \
+    tesseract-ocr-ita \
+    tesseract-ocr-por \
+    tesseract-ocr-hin \
+    tesseract-ocr-ara \
+    tesseract-ocr-rus \
     # Poppler-utils (pdftoppm, pdfimages)
     poppler-utils \
+    qpdf \
+    mupdf-tools \
     # Ghostscript (Camelot table parsing helper)
     ghostscript \
     # ImageMagick & HEIC tools
     imagemagick \
     libheif-examples \
+    libimage-exiftool-perl \
     # Microsoft compatible fonts and typography assets
     fonts-dejavu \
     fonts-liberation \

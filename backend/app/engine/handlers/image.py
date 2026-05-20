@@ -14,6 +14,11 @@ try:
     HEIF_PLUGIN_ENABLED = True
 except Exception:
     HEIF_PLUGIN_ENABLED = False
+try:
+    import easyocr
+    EASYOCR_ENABLED = True
+except Exception:
+    EASYOCR_ENABLED = False
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +83,10 @@ class ImageHandler(BaseHandler):
                 data = None
 
             cleaned_text = extracted_text.strip()
+            if len(cleaned_text) <= 15:
+                easy_text = self._extract_text_easyocr(img)
+                if easy_text:
+                    cleaned_text = easy_text
             
             doc = Document()
             # If we found sufficient text, write editable DOCX
@@ -186,8 +195,8 @@ class ImageHandler(BaseHandler):
             # Format modifications for transparency loss in JPEGs
             if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-
-            img.save(output_path)
+            save_kwargs = self._metadata_kwargs(img)
+            img.save(output_path, **save_kwargs)
             return output_path
 
         finally:
@@ -211,3 +220,30 @@ class ImageHandler(BaseHandler):
             img.save(output_path, format="HEIF", quality=90)
             return output_path
         raise RuntimeError("No HEIC encoder available in runtime.")
+
+    def _metadata_kwargs(self, img: Image.Image) -> dict:
+        kwargs = {}
+        exif = img.info.get("exif")
+        icc_profile = img.info.get("icc_profile")
+        if exif:
+            kwargs["exif"] = exif
+        if icc_profile:
+            kwargs["icc_profile"] = icc_profile
+        return kwargs
+
+    def _extract_text_easyocr(self, img: Image.Image) -> str:
+        if not EASYOCR_ENABLED:
+            return ""
+        try:
+            reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+            results = reader.readtext(img, detail=1, paragraph=False)
+            if not results:
+                return ""
+            filtered = []
+            for _, text, conf in results:
+                if text and conf >= 0.35:
+                    filtered.append(text.strip())
+            return "\n".join([t for t in filtered if t])
+        except Exception as e:
+            logger.warning(f"EasyOCR fallback failed: {e}")
+            return ""
