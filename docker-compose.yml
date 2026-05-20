@@ -1,6 +1,58 @@
-version: '3'
+version: '3.8'
+
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: converto-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: converto-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/tmp/converto/uploads
+      - OUTPUT_DIR=/tmp/converto/outputs
+      - MAX_FILE_SIZE_MB=50
+      - FILE_RETENTION_MINUTES=30
+    volumes:
+      - shared-data:/tmp/converto
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: converto-worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/tmp/converto/uploads
+      - OUTPUT_DIR=/tmp/converto/outputs
+      - MAX_FILE_SIZE_MB=50
+      - FILE_RETENTION_MINUTES=30
+    volumes:
+      - shared-data:/tmp/converto
+    depends_on:
+      redis:
+        condition: service_healthy
+
   gotenberg:
     image: gotenberg/gotenberg:8
+    container_name: converto-gotenberg
     ports:
       - "3020:3000"
+
+volumes:
+  shared-data:

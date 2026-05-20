@@ -47,3 +47,6 @@ temp_snapshot/
 test.docx
 pnpm-lock.yaml
 pnpm-workspace.yaml
+
+# large installers
+*.exe

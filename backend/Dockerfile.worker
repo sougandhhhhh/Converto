@@ -1,0 +1,46 @@
+FROM python:3.10-slim
+
+# Prevent writing pyc files and enable buffering
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install all system CLI tools required for high-fidelity conversion pipelines
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # LibreOffice Headless
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    libreoffice-common \
+    default-jre \
+    # Pandoc (Text/MD/HTML -> PDF/DOCX)
+    pandoc \
+    # Tesseract OCR & English model
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    # Poppler-utils (pdftoppm, pdfimages)
+    poppler-utils \
+    # Ghostscript (Camelot table parsing helper)
+    ghostscript \
+    # ImageMagick & HEIC tools
+    imagemagick \
+    libheif-examples \
+    # Microsoft compatible fonts and typography assets
+    fonts-dejavu \
+    fonts-liberation \
+    fonts-freefont-ttf \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fix ImageMagick security policy to allow PDF conversion operations
+RUN sed -i 's/domain="coder" rights="none" pattern="PDF"/domain="coder" rights="read | write" pattern="PDF"/g' /etc/ImageMagick-6/policy.xml || true
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Run Celery worker as default entrypoint
+CMD ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
