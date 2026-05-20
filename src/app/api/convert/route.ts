@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const OUTPUT_CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
