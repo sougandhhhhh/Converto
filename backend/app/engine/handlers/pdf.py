@@ -347,19 +347,53 @@ class PDFHandler(BaseHandler):
     def _to_image(self, pdf_path: Path, output_path: Path, to_ext: str) -> Path:
         """
         Converts PDF to PNG/JPEG/WEBP/HEIC.
-        For multi-page PDFs, returns the first page.
+        For multi-page PDFs, returns a ZIP containing one image per page.
         """
         temp_img_dir = pdf_path.parent / "temp_pdf_images"
         temp_img_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            # 1. Render first page to PNG
-            cmd = ["pdftoppm", "-png", "-f", "1", "-l", "1", "-r", "240", str(pdf_path), str(temp_img_dir / "page")]
+            # 1. Render all pages to PNG
+            cmd = ["pdftoppm", "-png", "-r", "240", str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=30)
 
-            extracted = list(temp_img_dir.glob("page-*.png"))
+            extracted = sorted(list(temp_img_dir.glob("page-*.png")))
             if not extracted:
-                raise FileNotFoundError("pdftoppm failed to generate page-1 image.")
+                raise FileNotFoundError("pdftoppm failed to generate page images.")
+
+            # Multi-page PDF -> ZIP package so users receive all pages.
+            if len(extracted) > 1:
+                zip_output = output_path.with_suffix(".zip")
+                with zipfile.ZipFile(zip_output, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for idx, png_path in enumerate(extracted, start=1):
+                        page_output_name = f"page-{idx:03d}{to_ext if to_ext != '.jpeg' else '.jpg'}"
+                        if to_ext == ".png":
+                            zf.write(png_path, arcname=page_output_name)
+                            continue
+
+                        if to_ext == ".heic":
+                            page_img_path = temp_img_dir / page_output_name
+                            try:
+                                cmd = ["heif-enc", str(png_path), str(page_img_path)]
+                                self.run_subprocess(cmd, timeout=30)
+                            except Exception:
+                                if not HEIF_PLUGIN_ENABLED:
+                                    raise
+                                img = Image.open(png_path)
+                                if img.mode in ("RGBA", "P"):
+                                    img = img.convert("RGB")
+                                img.save(page_img_path, format="HEIF", quality=90)
+                            zf.write(page_img_path, arcname=page_output_name)
+                            continue
+
+                        # JPEG / WEBP conversion path
+                        page_img_path = temp_img_dir / page_output_name
+                        img = Image.open(png_path)
+                        if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        img.save(page_img_path)
+                        zf.write(page_img_path, arcname=page_output_name)
+                return zip_output
 
             png_page = extracted[0]
 

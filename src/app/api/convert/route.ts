@@ -232,11 +232,16 @@ export async function POST(req: NextRequest) {
     }
 
     const outputBuffer = Buffer.from(await downloadResponse.arrayBuffer());
-    const outFileName = `${sourceBaseName}${targetExt}`;
+    const backendDisposition = downloadResponse.headers.get("content-disposition") || "";
+    const backendNameMatch = backendDisposition.match(/filename="([^"]+)"/i);
+    const outFileName = backendNameMatch?.[1] || `${sourceBaseName}${targetExt}`;
+    const normalizedOutExt = outFileName.includes(".")
+      ? `.${outFileName.split(".").pop()!.toLowerCase()}`
+      : targetExt;
 
     return new NextResponse(new Uint8Array(outputBuffer), {
       headers: {
-        "Content-Type": OUTPUT_CONTENT_TYPES[targetExt] || "application/octet-stream",
+        "Content-Type": OUTPUT_CONTENT_TYPES[normalizedOutExt] || "application/octet-stream",
         "Content-Disposition": `attachment; filename="${outFileName}"`,
       },
     });

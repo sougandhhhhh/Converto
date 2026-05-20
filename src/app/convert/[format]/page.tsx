@@ -81,12 +81,13 @@ function getConfigForSlug(slug: string) {
 }
 
 interface FileItem { id: string; file: File; }
+type ConverterConfig = ReturnType<typeof getConfigForSlug>;
 
 function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
-  item: FileItem; config: any; onRemove: (id: string) => void; forceConvert: boolean;
-  onStatusChange?: (id: string, status: ConvertStatus, downloadUrl: string | null) => void;
+  item: FileItem; config: ConverterConfig; onRemove: (id: string) => void; forceConvert: boolean;
+  onStatusChange?: (id: string, status: ConvertStatus, downloadUrl: string | null, downloadName: string | null) => void;
 }) {
-  const { convert, status, error, progress, downloadUrl } = useConvert();
+  const { convert, status, error, progress, downloadUrl, downloadName } = useConvert();
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -96,9 +97,9 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
 
   useEffect(() => {
     if (onStatusChange) {
-      onStatusChange(item.id, status, downloadUrl);
+      onStatusChange(item.id, status, downloadUrl, downloadName);
     }
-  }, [status, downloadUrl, item.id, onStatusChange]);
+  }, [status, downloadUrl, downloadName, item.id, onStatusChange]);
 
   const accent = config.accent ?? "#6366f1";
   const isProcessing = status === "uploading" || status === "converting";
@@ -217,7 +218,7 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
                   onClick={() => {
                     const a = document.createElement("a");
                     a.href = downloadUrl;
-                    a.download = item.file.name.replace(/\.[^/.]+$/, "") + config.to;
+                    a.download = downloadName || (item.file.name.replace(/\.[^/.]+$/, "") + config.to);
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -265,16 +266,20 @@ export default function ConvertPage() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [dropError, setDropError] = useState<string | null>(null);
   const [forceConvertAll, setForceConvertAll] = useState(false);
-  const [fileStates, setFileStates] = useState<Record<string, { status: ConvertStatus; downloadUrl: string | null }>>({});
+  const [fileStates, setFileStates] = useState<Record<string, { status: ConvertStatus; downloadUrl: string | null; downloadName: string | null }>>({});
 
-  const handleStatusChange = useCallback((id: string, status: ConvertStatus, downloadUrl: string | null) => {
+  const handleStatusChange = useCallback((id: string, status: ConvertStatus, downloadUrl: string | null, downloadName: string | null) => {
     setFileStates(prev => {
-      if (prev[id]?.status === status && prev[id]?.downloadUrl === downloadUrl) {
+      if (
+        prev[id]?.status === status &&
+        prev[id]?.downloadUrl === downloadUrl &&
+        prev[id]?.downloadName === downloadName
+      ) {
         return prev;
       }
       return {
         ...prev,
-        [id]: { status, downloadUrl }
+        [id]: { status, downloadUrl, downloadName }
       };
     });
   }, []);
@@ -294,7 +299,7 @@ export default function ConvertPage() {
       if (url) {
         const a = document.createElement("a");
         a.href = url;
-        a.download = f.file.name.replace(/\.[^/.]+$/, "") + config.to;
+        a.download = fileStates[f.id]?.downloadName || (f.file.name.replace(/\.[^/.]+$/, "") + config.to);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

@@ -19,6 +19,7 @@ export interface UseConvertResult {
   error: string | null;
   progress: number;
   downloadUrl: string | null;
+  downloadName: string | null;
 }
 
 type BackendConvertResponse = { task_id?: string };
@@ -33,6 +34,7 @@ export function useConvert(): UseConvertResult {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadName, setDownloadName] = useState<string | null>(null);
 
   // Clean up Object URL when the component unmounts
   useEffect(() => {
@@ -57,6 +59,7 @@ export function useConvert(): UseConvertResult {
       setError(`File too large. Max ${maxUploadMb} MB per file.`);
       setProgress(0);
       setDownloadUrl(null);
+      setDownloadName(null);
       return;
     }
 
@@ -64,6 +67,7 @@ export function useConvert(): UseConvertResult {
     setError(null);
     setProgress(12);
     setDownloadUrl(null);
+    setDownloadName(null);
 
     try {
       const backendPublicBase = (process.env.NEXT_PUBLIC_CONVERTO_BACKEND_URL || "").replace(/\/$/, "");
@@ -155,7 +159,11 @@ export function useConvert(): UseConvertResult {
         setProgress(96);
         const blob = await downloadRes.blob();
         const url = URL.createObjectURL(blob);
+        const disposition = downloadRes.headers.get("content-disposition") || "";
+        const headerMatch = disposition.match(/filename="([^"]+)"/i);
+        const resolvedName = headerMatch?.[1] || `${file.name.replace(/\.[^/.]+$/, "")}${targetExt}`;
         setDownloadUrl(url);
+        setDownloadName(resolvedName);
         setStatus("done");
         setProgress(100);
         return;
@@ -221,6 +229,9 @@ export function useConvert(): UseConvertResult {
         url = URL.createObjectURL(blob);
       }
 
+      const routeDisposition = response.headers.get("content-disposition") || "";
+      const routeMatch = routeDisposition.match(/filename="([^"]+)"/i);
+      setDownloadName(routeMatch?.[1] || `${file.name.replace(/\.[^/.]+$/, "")}${toFormat}`);
       setDownloadUrl(url);
       setStatus("done");
       setProgress(100);
@@ -232,5 +243,5 @@ export function useConvert(): UseConvertResult {
     }
   };
 
-  return { convert, status, error, progress, downloadUrl };
+  return { convert, status, error, progress, downloadUrl, downloadName };
 }
