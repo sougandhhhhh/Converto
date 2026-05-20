@@ -14,6 +14,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+import JSZip from "jszip";
 const FALLBACK_VERCEL_LIMIT_MB = 4.5;
 const DIRECT_BACKEND_DEFAULT_LIMIT_MB = 50;
 
@@ -103,6 +104,32 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
 
   const accent = config.accent ?? "#6366f1";
   const isProcessing = status === "uploading" || status === "converting";
+  const isArchiveOutput = Boolean(downloadName && downloadName.toLowerCase().endsWith(".zip"));
+  const isPdfToImageFlow =
+    config.from === ".pdf" && [".jpg", ".jpeg", ".png", ".webp", ".heic"].includes(config.to);
+
+  const downloadAsFile = useCallback((url: string, name: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
+
+  const downloadAllImagesFromZip = useCallback(async () => {
+    if (!downloadUrl) return;
+    const response = await fetch(downloadUrl);
+    const blob = await response.blob();
+    const zip = await JSZip.loadAsync(blob);
+    const entries = Object.entries(zip.files).filter(([, file]) => !file.dir);
+    for (const [name, fileRef] of entries) {
+      const fileBlob = await fileRef.async("blob");
+      const objectUrl = URL.createObjectURL(fileBlob);
+      downloadAsFile(objectUrl, name);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    }
+  }, [downloadUrl, downloadAsFile]);
 
   return (
     <motion.div 
@@ -214,19 +241,22 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
                 Done ✓
               </span>
               {downloadUrl && (
-                <button
-                  onClick={() => {
-                    const a = document.createElement("a");
-                    a.href = downloadUrl;
-                    a.download = downloadName || (item.file.name.replace(/\.[^/.]+$/, "") + config.to);
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
-                >
-                  <Download size={13} /> Download
-                </button>
+                <>
+                  <button
+                    onClick={() => downloadAsFile(downloadUrl, downloadName || (item.file.name.replace(/\.[^/.]+$/, "") + config.to))}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
+                  >
+                    <Download size={13} /> {isArchiveOutput ? "Download ZIP" : "Download"}
+                  </button>
+                  {isPdfToImageFlow && isArchiveOutput && (
+                    <button
+                      onClick={downloadAllImagesFromZip}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer"
+                    >
+                      <Download size={13} /> Download All Images
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

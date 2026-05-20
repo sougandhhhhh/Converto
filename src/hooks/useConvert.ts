@@ -177,7 +177,12 @@ export function useConvert(): UseConvertResult {
         const blob = await downloadRes.blob();
         const url = URL.createObjectURL(blob);
         const disposition = downloadRes.headers.get("content-disposition") || "";
-        const resolvedName = extractFilenameFromDisposition(disposition) || `${file.name.replace(/\.[^/.]+$/, "")}${targetExt}`;
+        const headerName = extractFilenameFromDisposition(disposition);
+        const guessedName =
+          blob.type.includes("zip")
+            ? `${file.name.replace(/\.[^/.]+$/, "")}.zip`
+            : `${file.name.replace(/\.[^/.]+$/, "")}${targetExt}`;
+        const resolvedName = headerName || guessedName;
         setDownloadUrl(url);
         setDownloadName(resolvedName);
         setStatus("done");
