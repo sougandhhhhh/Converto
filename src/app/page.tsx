@@ -38,17 +38,17 @@ const SUB_BUTTONS: Record<string, { label: string; slug: string }[]> = {
   docx: [
     { label: "DOCX → PDF",  slug: "docx-to-pdf"  }, { label: "DOCX → TXT",  slug: "docx-to-txt"  },
     { label: "DOCX → HTML", slug: "docx-to-html" }, { label: "DOCX → XLSX", slug: "docx-to-xlsx" },
-    { label: "DOCX → WEBP", slug: "docx-to-webp" }, { label: "DOCX → CSV",  slug: "docx-to-csv"  },
+    { label: "DOCX → WEBP", slug: "docx-to-webp" },
     { label: "DOCX → JPG",  slug: "docx-to-jpg"  }, { label: "DOCX → PNG",  slug: "docx-to-png"  },
     { label: "DOCX → PPTX", slug: "docx-to-pptx" }, { label: "DOCX → ZIP",  slug: "docx-to-zip"  },
     { label: "DOCX → HEIC", slug: "docx-to-heic" },
   ],
   pptx: [
     { label: "PPTX → PDF",  slug: "pptx-to-pdf"  }, { label: "PPTX → DOCX", slug: "pptx-to-docx" },
-    { label: "PPTX → XLSX", slug: "pptx-to-xlsx" }, { label: "PPTX → TXT",  slug: "pptx-to-txt"  },
+    { label: "PPTX → TXT",  slug: "pptx-to-txt"  },
     { label: "PPTX → JPG",  slug: "pptx-to-jpg"  }, { label: "PPTX → PNG",  slug: "pptx-to-png"  },
     { label: "PPTX → WEBP", slug: "pptx-to-webp" }, { label: "PPTX → HTML", slug: "pptx-to-html" },
-    { label: "PPTX → HEIC", slug: "pptx-to-heic" }, { label: "PPTX → CSV",  slug: "pptx-to-csv"  },
+    { label: "PPTX → HEIC", slug: "pptx-to-heic" },
     { label: "PPTX → ZIP",  slug: "pptx-to-zip"  },
   ],
   xlsx: [
