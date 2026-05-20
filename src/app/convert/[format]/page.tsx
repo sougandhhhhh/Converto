@@ -254,6 +254,7 @@ export default function ConvertPage() {
 
   const { theme } = useTheme();
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [dropError, setDropError] = useState<string | null>(null);
   const [forceConvertAll, setForceConvertAll] = useState(false);
   const [fileStates, setFileStates] = useState<Record<string, { status: ConvertStatus; downloadUrl: string | null }>>({});
 
@@ -296,6 +297,7 @@ export default function ConvertPage() {
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
+      setDropError(null);
       setFiles(prev => [
         ...prev,
         ...acceptedFiles.map(file => ({
@@ -307,8 +309,13 @@ export default function ConvertPage() {
     }
   }, []);
 
+  const onDropRejected = useCallback(() => {
+    setDropError(`Upload limit: max ${MAX_UPLOAD_MB} MB per file.`);
+  }, []);
+
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: config.accept,
     maxSize: MAX_UPLOAD_BYTES,
     noClick: files.length > 0,
@@ -360,6 +367,22 @@ export default function ConvertPage() {
         {/* Converter Area */}
         <div {...getRootProps()} className="outline-none">
           <input {...getInputProps()} />
+          {dropError && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.07] px-4 py-3">
+              <p className="text-xs sm:text-sm font-semibold text-rose-500">{dropError}</p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDropError(null);
+                }}
+                className="touch-target p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
+                aria-label="Dismiss upload error"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
 
           {files.length === 0 ? (
             /* Dropzone Empty State */
