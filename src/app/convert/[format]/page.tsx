@@ -14,6 +14,8 @@ import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+const MAX_UPLOAD_MB = 4.5;
+const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
 
 const MIME_TYPES: Record<string, string[]> = {
   ".pdf":  ["application/pdf"],
@@ -308,7 +310,7 @@ export default function ConvertPage() {
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: config.accept,
-    maxSize: 50 * 1024 * 1024,
+    maxSize: MAX_UPLOAD_BYTES,
     noClick: files.length > 0,
     multiple: true,
   });
@@ -385,7 +387,7 @@ export default function ConvertPage() {
 
               <div className="flex flex-wrap gap-2 justify-center">
                 <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
-                  Max 50 MB
+                  Max {MAX_UPLOAD_MB} MB
                 </span>
                 <span 
                   className="px-3 py-1 rounded-full border text-[10px] font-bold"

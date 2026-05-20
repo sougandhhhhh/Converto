@@ -91,7 +91,7 @@ export default function Navbar() {
                     { q: "How do I convert a file?", a: "Select your source format from the grid, pick your target output format, drag & drop your file, then click Convert. Download starts instantly." },
                     { q: "Are my files stored?", a: "No. Files are processed in-memory and deleted immediately after conversion. We maintain a strict zero-retention policy." },
                     { q: "What is Sandbox Mode?", a: "When the LibreOffice container is offline, sandbox mode handles conversions with a styled fallback. All conversions work in production." },
-                    { q: "What is the file size limit?", a: "Files up to 50 MB are accepted to ensure fast response times and efficient server memory usage." },
+                    { q: "What is the file size limit?", a: "Files up to 4.5 MB are accepted per file due to Vercel function payload limits." },
                   ].map(({ q, a }, idx) => (
                     <div key={idx} className="p-4 rounded-xl border border-border/30 bg-secondary/10">
                       <h4 className="text-xs sm:text-sm font-bold text-foreground mb-1.5">{q}</h4>

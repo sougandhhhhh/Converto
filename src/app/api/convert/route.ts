@@ -27,6 +27,8 @@ const OUTPUT_CONTENT_TYPES: Record<string, string> = {
 
 const POLL_INTERVAL_MS = 1200;
 const CONVERSION_TIMEOUT_MS = 180000;
+const MAX_UPLOAD_MB = 4.5;
+const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
 
 type BackendStatusResponse = {
   status?: string;
@@ -125,9 +127,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (hasFile && file.size > 50 * 1024 * 1024) {
+    if (hasFile && file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: "Conversion failed", details: "File too large (max 50MB)." },
+        { error: "Conversion failed", details: `File too large (max ${MAX_UPLOAD_MB} MB).` },
         { status: 413 },
       );
     }

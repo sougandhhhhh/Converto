@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+const MAX_UPLOAD_MB = 4.5;
+const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
 
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
 
@@ -36,6 +38,14 @@ export function useConvert(): UseConvertResult {
    * @param {string} toFormat The format of the target file (e.g., '.pdf')
    */
   const convert = async (file: File, fromFormat: string, toFormat: string) => {
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setStatus("error");
+      setError(`File too large. Max ${MAX_UPLOAD_MB} MB per file.`);
+      setProgress(0);
+      setDownloadUrl(null);
+      return;
+    }
+
     setStatus("uploading");
     setError(null);
     setProgress(20);
