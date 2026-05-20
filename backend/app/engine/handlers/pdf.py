@@ -20,6 +20,7 @@ except Exception:
     HEIF_PLUGIN_ENABLED = False
 
 logger = logging.getLogger(__name__)
+PDF_IMAGE_RENDER_TIMEOUT_SECONDS = 300
 
 class PDFHandler(BaseHandler):
     """
@@ -355,7 +356,7 @@ class PDFHandler(BaseHandler):
         try:
             # 1. Render all pages to PNG
             cmd = ["pdftoppm", "-png", "-r", "240", str(pdf_path), str(temp_img_dir / "page")]
-            self.run_subprocess(cmd, timeout=30)
+            self.run_subprocess(cmd, timeout=PDF_IMAGE_RENDER_TIMEOUT_SECONDS)
 
             extracted = sorted(list(temp_img_dir.glob("page-*.png")))
             if not extracted:
