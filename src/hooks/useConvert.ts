@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 const FALLBACK_VERCEL_LIMIT_MB = 4.5;
 const DIRECT_BACKEND_DEFAULT_LIMIT_MB = 50;
+const POLL_INTERVAL_MS = 1200;
+const DIRECT_CONVERSION_TIMEOUT_MS = 8 * 60 * 1000;
 
 function getClientUploadLimitMb(): number {
   const configured = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB || "");
@@ -18,6 +20,9 @@ export interface UseConvertResult {
   progress: number;
   downloadUrl: string | null;
 }
+
+type BackendConvertResponse = { task_id?: string };
+type BackendStatusResponse = { status?: string; error?: string };
 
 /**
  * A React hook to manage file conversions via the `/api/convert` endpoint.
@@ -85,6 +90,70 @@ export function useConvert(): UseConvertResult {
           throw new Error("Backend did not return file id after upload.");
         }
         fileId = uploadData.file_id;
+      }
+
+      // When direct backend URL is configured, keep the entire conversion flow
+      // off Vercel functions to avoid request body and function duration limits.
+      if (backendPublicBase && fileId) {
+        const targetExt = toFormat.startsWith(".") ? toFormat : `.${toFormat}`;
+        const convertUrl = new URL(`${backendPublicBase}/api/convert`);
+        convertUrl.searchParams.set("file_id", fileId);
+        convertUrl.searchParams.set("target_ext", targetExt);
+
+        const convertRes = await fetch(convertUrl.toString(), {
+          method: "POST",
+        });
+        if (!convertRes.ok) {
+          const t = await convertRes.text();
+          throw new Error(t || "Failed to enqueue backend conversion.");
+        }
+        const convertData = (await convertRes.json()) as BackendConvertResponse;
+        if (!convertData.task_id) {
+          throw new Error("Backend did not return task id.");
+        }
+
+        const started = Date.now();
+        while (Date.now() - started < DIRECT_CONVERSION_TIMEOUT_MS) {
+          const statusRes = await fetch(`${backendPublicBase}/api/status/${convertData.task_id}`, {
+            method: "GET",
+          });
+          if (!statusRes.ok) {
+            const t = await statusRes.text();
+            throw new Error(t || "Failed to read backend conversion status.");
+          }
+          const statusData = (await statusRes.json()) as BackendStatusResponse;
+          const state = (statusData.status || "").toUpperCase();
+
+          if (state === "SUCCESS") {
+            break;
+          }
+          if (state === "FAILURE") {
+            throw new Error(statusData.error || "Backend conversion failed.");
+          }
+
+          const elapsedRatio = Math.min(1, (Date.now() - started) / DIRECT_CONVERSION_TIMEOUT_MS);
+          setProgress(60 + Math.floor(elapsedRatio * 35));
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+
+        if (Date.now() - started >= DIRECT_CONVERSION_TIMEOUT_MS) {
+          throw new Error("Conversion timed out. Please try again.");
+        }
+
+        const downloadRes = await fetch(`${backendPublicBase}/api/download/${convertData.task_id}`, {
+          method: "GET",
+        });
+        if (!downloadRes.ok) {
+          const t = await downloadRes.text();
+          throw new Error(t || "Converted file was not available for download.");
+        }
+
+        const blob = await downloadRes.blob();
+        const url = URL.createObjectURL(blob);
+        setDownloadUrl(url);
+        setStatus("done");
+        setProgress(100);
+        return;
       }
 
       const formData = new FormData();
