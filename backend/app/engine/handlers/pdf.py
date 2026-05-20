@@ -118,29 +118,10 @@ class PDFHandler(BaseHandler):
         """
         Extracts semantic text paragraphs and compiles an editable Word Document.
         """
-        # Prefer LibreOffice PDF import first for better layout fidelity.
-        logger.info("Attempting layout-preserving LibreOffice PDF import...")
-        cmd = [
-            "libreoffice",
-            "--headless",
-            "--infilter=writer_pdf_import",
-            "--convert-to",
-            "docx",
-            "--outdir",
-            str(output_path.parent),
-            str(pdf_path),
-        ]
-        try:
-            self.run_subprocess(cmd, timeout=120)
-            expected_lo_file = output_path.parent / f"{pdf_path.stem}.docx"
-            if expected_lo_file.exists():
-                if expected_lo_file != output_path:
-                    shutil.move(str(expected_lo_file), str(output_path))
-                if self._docx_has_content(output_path) and not self._docx_has_problematic_vml_background(output_path):
-                    return output_path
-                logger.warning("LibreOffice DOCX failed quality checks (empty or problematic VML background). Using fallback pipeline.")
-        except Exception as e:
-            logger.warning(f"LibreOffice import failed: {e}. Falling back to text reconstruction.")
+        # NOTE:
+        # LibreOffice PDF import can generate VML-heavy DOCX that renders as blank/black
+        # in some production viewers. Use deterministic text/image reconstruction only.
+        logger.info("Using deterministic PDF->DOCX reconstruction pipeline (no LibreOffice PDF import).")
 
         logger.info("Extracting paragraphs using pdfplumber fallback...")
         doc = Document()
