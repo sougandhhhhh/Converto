@@ -1,47 +1,28 @@
-# Converto — Universal File Converter
+# 🌌 Converto — Universal File Converter
 
-A full-stack document conversion platform built with **Next.js 16** (App Router) and **FastAPI** (Python), supporting **68+ format conversions** with zero file retention.
-
----
-
-## Features
-
-- **68+ Conversion Formats** — PDF, DOCX, PPTX, XLSX, images (JPG, PNG, WEBP, HEIC, AVIF, GIF), TXT, HTML, MD, CSV, JSON, XML, ZIP, ODT, ODS and more
-- **Async Processing** — Celery + Redis for background conversion jobs with real-time status polling
-- **Rich PDF Engine** — pdfplumber, Camelot (table extraction), pdftoppm, muPDF, OCRmyPDF, python-docx, python-pptx
-- **Office Suite** — LibreOffice headless for Office-to-anything transformations
-- **Image Processing** — Pillow, ImageMagick, Sharp, HEIC/AVIF transcoding, Tesseract/EasyOCR (OCR to text)
-- **Text & Markdown** — Pandoc-powered conversion between TXT, MD, HTML, PDF, DOCX, CSV, JSON, XML
-- **Privacy First** — Zero-retention policy. Files are processed in-memory and purged after conversion
-- **Dual Theme** — Light and dark mode with smooth transitions and persistent preference
-- **Responsive UI** — Mobile-first design with Framer Motion animations and shadcn/ui components
-- **tRPC + React Query** — End-to-end type-safe API calls with automatic caching and refetching
-- **Docker Orchestration** — Compose setup with Redis, FastAPI backend, Celery worker, and Gotenberg
+Convert anything, to anything. **Next.js 16** + **FastAPI** powered platform supporting **68+ format conversions** with zero file retention. 🚀
 
 ---
 
-## Pages
+## ✨ Features
 
-| Route | Description |
-|---|---|
-| `/` | Landing page with hero, format picker, feature grid, modals |
-| `/convert/[format]` | Dynamic conversion page (e.g. `/convert/pdf-to-docx`) |
-| `/dashboard` | User dashboard |
-| `/login` | Login page |
-| `/register` | Registration page |
-| `/settings` | User settings |
-| `/pricing` | Pricing page |
-| `/privacy` | Privacy policy |
-| `/terms` | Terms of service |
-| `/tools` | All conversion tools listing |
-| `/api/health` | Health check endpoint |
-| `/api/trpc/[trpc]` | tRPC API handler |
+- **📄 68+ Conversion Formats** — PDF, DOCX, PPTX, XLSX, images (JPG, PNG, WEBP, HEIC, AVIF, GIF), TXT, HTML, MD, CSV, JSON, XML, ZIP, ODT, ODS and more
+- **⚙️ Async Processing** — Celery + Redis for background conversion jobs with real-time status polling
+- **🔬 Rich PDF Engine** — pdfplumber, Camelot (table extraction), pdftoppm, muPDF, OCRmyPDF, python-docx, python-pptx
+- **🏢 Office Suite** — LibreOffice headless for Office-to-anything transformations
+- **🖼️ Image Processing** — Pillow, ImageMagick, Sharp, HEIC/AVIF transcoding, Tesseract + EasyOCR
+- **📝 Text & Markdown** — Pandoc-powered conversion between TXT, MD, HTML, PDF, DOCX, CSV, JSON, XML
+- **🔒 Privacy First** — Zero-retention policy. Files processed in-memory, purged after conversion
+- **🌓 Dual Theme** — Light and dark mode with smooth transitions and persistent preference
+- **📱 Responsive UI** — Mobile-first with Framer Motion animations and shadcn/ui components
+- **🔗 tRPC + React Query** — End-to-end type-safe API calls with automatic caching
+- **🐳 Docker Orchestration** — Compose setup with Redis, FastAPI backend, Celery worker, and Gotenberg
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-**Frontend**
+**🎨 Frontend**
 - [Next.js 16.2.6](https://nextjs.org/) (App Router, Turbopack)
 - [React 19.2](https://react.dev/)
 - [Tailwind CSS v4](https://tailwindcss.com/)
@@ -51,7 +32,7 @@ A full-stack document conversion platform built with **Next.js 16** (App Router)
 - [shadcn/ui](https://ui.shadcn.com/) — component primitives
 - [Zod](https://zod.dev/) — schema validation
 
-**Backend**
+**⚡ Backend**
 - [FastAPI](https://fastapi.tiangolo.com/) (Python 3.10)
 - [Celery](https://docs.celeryq.dev/) — async task queue
 - [Redis](https://redis.io/) — message broker & result backend
@@ -64,33 +45,33 @@ A full-stack document conversion platform built with **Next.js 16** (App Router)
 - [ImageMagick](https://imagemagick.org/) — image transcoding
 - [python-docx](https://python-docx.readthedocs.io/) / [python-pptx](https://python-pptx.readthedocs.io/) / [openpyxl](https://openpyxl.readthedocs.io/) — Office file manipulation
 
-**Infrastructure**
+**🏗️ Infrastructure**
 - [Docker Compose](https://docs.docker.com/compose/) — local development (Redis, backend, worker, Gotenberg)
 - [Cloudflare R2 / AWS S3](https://aws.amazon.com/s3/) — optional file storage for large uploads
 
 ---
 
-## Backend API Endpoints
+## 🌐 Backend API Endpoints
 
 | Method | Path | Description |
-|---|---|---|
-| POST | `/api/upload` | Upload a file (validates size & extension) |
-| POST | `/api/convert` | Submit a conversion job |
-| GET | `/api/status/{task_id}` | Poll conversion status |
-| GET | `/api/download/{task_id}` | Download the converted file |
-| POST | `/api/cleanup` | Trigger file garbage collection |
+| :--- | :--- | :--- |
+| 📤 POST | `/api/upload` | Upload a file (validates size & extension) |
+| 🔄 POST | `/api/convert` | Submit a conversion job |
+| 📊 GET | `/api/status/{task_id}` | Poll conversion status |
+| 📥 GET | `/api/download/{task_id}` | Download the converted file |
+| 🧹 POST | `/api/cleanup` | Trigger file garbage collection |
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (optional — needed for backend services)
 - [Git](https://git-scm.com/)
 
-### Setup
+### 🛠️ Setup
 
 ```bash
 # Clone the repository
@@ -100,10 +81,6 @@ cd converto
 # Install frontend dependencies
 npm install
 
-# Set up environment
-cp .env.local.example .env.local
-# Edit .env.local with your configuration
-
 # Start backend services (Docker required)
 docker compose up -d
 
@@ -111,13 +88,13 @@ docker compose up -d
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open **[http://localhost:3000](http://localhost:3000)** 🎉
 
-> **Windows users**: Run `startconverto.bat` to start both Docker services and the Next.js dev server with one click.
+> **💡 Windows users**: Run `startconverto.bat` to start both Docker services and the Next.js dev server with one click.
 
-### Without Docker
+### 🏝️ Without Docker
 
-If Docker is not installed, Converto runs in sandbox mode — the frontend works fully, while conversion operations fall back gracefully:
+No Docker? No problem. Converto runs in sandbox mode — the frontend works fully, conversions fall back gracefully:
 
 ```bash
 npm run dev
@@ -125,7 +102,7 @@ npm run dev
 
 ---
 
-## Environment Variables
+## 🔐 Environment Variables
 
 ```env
 # Gotenberg rendering engine URL
@@ -150,13 +127,13 @@ R2_BUCKET=your_bucket_name
 
 ---
 
-## Docker Services
+## 🐳 Docker Services
 
 ```yaml
-redis:       # Redis 7 Alpine — Celery broker
-backend:     # FastAPI server (port 8000)
-worker:      # Celery worker (concurrency=4)
-gotenberg:   # Gotenberg 8 (port 3020 → 3000)
+redis:     # 📦 Redis 7 Alpine — Celery broker
+backend:   # ⚡ FastAPI server (port 8000)
+worker:    # 🔄 Celery worker (concurrency=4)
+gotenberg: # 📄 Gotenberg 8 (port 3020 → 3000)
 ```
 
 ```bash
@@ -169,9 +146,9 @@ npm run gotenberg
 
 ---
 
-## Deployment
+## 🌍 Deployment
 
-Converto is designed for [Vercel](https://vercel.com/) (frontend) + [Koyeb](https://www.koyeb.com/) (Gotenberg backend):
+Converto is designed for **[Vercel](https://vercel.com/)** (frontend) + **[Koyeb](https://www.koyeb.com/)** (Gotenberg backend):
 
 ```bash
 # Deploy backend to Koyeb
@@ -182,30 +159,30 @@ Set `GOTENBERG_URL` in your Vercel dashboard to point to your Koyeb Gotenberg in
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 src/
-  app/               # Next.js App Router pages & API routes
-  components/        # Shared UI components (Navbar, Footer, ThemeProvider)
-  hooks/             # Custom React hooks
-  lib/               # Utility functions
-  server/            # tRPC server logic
+  app/           🌐 Next.js App Router pages & API routes
+  components/    🧩 Shared UI components (Navbar, Footer, ThemeProvider)
+  hooks/         🪝 Custom React hooks
+  lib/           🔧 Utility functions
+  server/        🔗 tRPC server logic
 
 backend/
-  Dockerfile         # FastAPI server image
-  Dockerfile.worker  # Celery worker image
-  requirements.txt   # Python dependencies
+  Dockerfile         🐳 FastAPI server image
+  Dockerfile.worker  🐳 Celery worker image
+  requirements.txt   📦 Python dependencies
   app/
-    main.py          # FastAPI entrypoint
-    api/routes.py    # REST endpoints
-    engine/          # Conversion pipeline handlers (PDF, Office, Image, Text)
-    tasks.py         # Celery background tasks
-    utils/           # File management & validation
+    main.py          🚀 FastAPI entrypoint
+    api/routes.py    🌐 REST endpoints
+    engine/          ⚙️ Conversion pipeline handlers (PDF, Office, Image, Text)
+    tasks.py         🔄 Celery background tasks
+    utils/           🛠️ File management & validation
 ```
 
 ---
 
-## License
+## 📄 License
 
 MIT
