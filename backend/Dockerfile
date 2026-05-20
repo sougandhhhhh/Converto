@@ -6,9 +6,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install basic updates and curl for health check
+# Install runtime system deps:
+# - curl: health checks
+# - poppler-utils: provides pdftoppm used for PDF -> image conversions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    poppler-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
