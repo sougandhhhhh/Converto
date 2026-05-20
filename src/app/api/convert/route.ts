@@ -78,8 +78,8 @@ async function extractSourceContent(buffer: Buffer, format: string): Promise<Ext
     try {
       const pdf = await import("pdf-parse");
       const data = await pdf.default(buffer);
-      const text = data.text;
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+      const text = data.text || "";
+      const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
       return {
         text,
         lines,
