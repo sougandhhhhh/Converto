@@ -755,7 +755,7 @@ export async function POST(req: NextRequest) {
              <text x="120" y="60" class="meta-val">${new Date().toLocaleString()}</text>
 
              <text x="0" y="100" class="meta-label">STATUS:</text>
-             <text x="120" y="100" class="meta-val" fill="#10b981">Conversion Optimized & Validated</text>
+             <text x="120" y="100" class="meta-val" fill="#10b981">Conversion Optimized &amp; Validated</text>
           </g>
 
           <rect x="120" y="580" width="560" height="300" rx="12" fill="#141218" stroke="#494551" />
