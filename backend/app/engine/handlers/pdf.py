@@ -136,9 +136,9 @@ class PDFHandler(BaseHandler):
             if expected_lo_file.exists():
                 if expected_lo_file != output_path:
                     shutil.move(str(expected_lo_file), str(output_path))
-                if self._docx_has_content(output_path):
+                if self._docx_has_content(output_path) and not self._docx_has_problematic_vml_background(output_path):
                     return output_path
-                logger.warning("LibreOffice produced a DOCX shell with no extractable content. Using fallback pipeline.")
+                logger.warning("LibreOffice DOCX failed quality checks (empty or problematic VML background). Using fallback pipeline.")
         except Exception as e:
             logger.warning(f"LibreOffice import failed: {e}. Falling back to text reconstruction.")
 
@@ -179,6 +179,25 @@ class PDFHandler(BaseHandler):
             return bool(meaningful_text) or has_drawing
         except Exception as e:
             logger.warning(f"DOCX validation check failed for {docx_path}: {e}")
+            return False
+
+    def _docx_has_problematic_vml_background(self, docx_path: Path) -> bool:
+        """
+        Detects a known LibreOffice PDF-import artifact where a full-page VML shape/fill
+        can render as black pages in some Word viewers/editors.
+        """
+        try:
+            with zipfile.ZipFile(docx_path, "r") as zf:
+                xml = zf.read("word/document.xml").decode("utf-8", errors="ignore")
+
+            has_vml_shape = "<v:shape" in xml
+            has_black_fill_hint = ('color2="black"' in xml) or ('<v:fill' in xml and 'black' in xml)
+            # If this VML artifact appears and text content is sparse, prefer fallback output.
+            text_nodes = re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml, flags=re.DOTALL)
+            text_len = len("".join(text_nodes).strip())
+            return has_vml_shape and has_black_fill_hint and text_len < 200
+        except Exception as e:
+            logger.warning(f"Problematic VML detection failed for {docx_path}: {e}")
             return False
 
     def _pdf_pages_to_docx_images(self, pdf_path: Path, output_path: Path) -> None:

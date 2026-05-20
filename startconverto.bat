@@ -18,11 +18,16 @@ if "%DOCKER_AVAILABLE%"=="0" (
   )
 )
 
+call :startFrontend
+
 if %DOCKER_AVAILABLE%==1 goto startDocker
 goto noDocker
 
 :startDocker
 echo Docker found -- starting backend services...
+if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+  start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" >nul 2>&1
+)
 set WAIT_COUNT=0
 
 :waitDockerLoop
@@ -66,6 +71,21 @@ echo To install Docker, run: "%~dp0DockerDesktopInstaller.exe"
 echo.
 
 :afterDocker
+echo.
+echo Frontend is running at http://localhost:%FRONTEND_PORT%
+if %DOCKER_AVAILABLE%==1 echo Backend API is at http://localhost:8000
+echo Close the "Converto Next.js" window to stop the frontend.
+echo Press any key to stop all services.
+pause >nul
+
+if %DOCKER_AVAILABLE%==1 (
+  echo Stopping services...
+  "%DOCKER_EXE%" compose down
+)
+endlocal
+goto :eof
+
+:startFrontend
 echo Starting Next.js frontend...
 if not exist "node_modules" (
   echo Installing dependencies first...
@@ -80,16 +100,4 @@ if exist "%CHROME_EXE%" (
 ) else (
   start "" "http://localhost:%FRONTEND_PORT%"
 )
-
-echo.
-echo Converto is now running at http://localhost:%FRONTEND_PORT%
-if %DOCKER_AVAILABLE%==1 echo Backend API is at http://localhost:8000
-echo Close the "Converto Next.js" window to stop the frontend.
-echo Press any key to stop all services.
-pause >nul
-
-if %DOCKER_AVAILABLE%==1 (
-  echo Stopping services...
-  "%DOCKER_EXE%" compose down
-)
-endlocal
+exit /b 0
