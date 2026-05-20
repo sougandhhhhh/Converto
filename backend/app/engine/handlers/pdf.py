@@ -2,11 +2,13 @@ import os
 import shutil
 import zipfile
 import logging
+import re
 from pathlib import Path
 from PIL import Image
 import pdfplumber
 import camelot
 from docx import Document
+from docx.shared import Inches as DocxInches
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from app.engine.handlers.base import BaseHandler
@@ -134,7 +136,9 @@ class PDFHandler(BaseHandler):
             if expected_lo_file.exists():
                 if expected_lo_file != output_path:
                     shutil.move(str(expected_lo_file), str(output_path))
-                return output_path
+                if self._docx_has_content(output_path):
+                    return output_path
+                logger.warning("LibreOffice produced a DOCX shell with no extractable content. Using fallback pipeline.")
         except Exception as e:
             logger.warning(f"LibreOffice import failed: {e}. Falling back to text reconstruction.")
 
@@ -154,7 +158,52 @@ class PDFHandler(BaseHandler):
             doc.save(output_path)
             return output_path
 
+        logger.warning("No extractable text found. Building image-based DOCX fallback to avoid blank output.")
+        self._pdf_pages_to_docx_images(pdf_path, output_path)
+        if self._docx_has_content(output_path):
+            return output_path
+
         raise RuntimeError("Failed to convert PDF to DOCX using available pipelines.")
+
+    def _docx_has_content(self, docx_path: Path) -> bool:
+        """
+        Quick quality gate: verifies that generated DOCX contains meaningful body text
+        or embedded drawing/image references.
+        """
+        try:
+            with zipfile.ZipFile(docx_path, "r") as zf:
+                xml = zf.read("word/document.xml").decode("utf-8", errors="ignore")
+            text_nodes = re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml, flags=re.DOTALL)
+            meaningful_text = "".join(text_nodes).strip()
+            has_drawing = ("<w:drawing" in xml) or ("<v:shape" in xml)
+            return bool(meaningful_text) or has_drawing
+        except Exception as e:
+            logger.warning(f"DOCX validation check failed for {docx_path}: {e}")
+            return False
+
+    def _pdf_pages_to_docx_images(self, pdf_path: Path, output_path: Path) -> None:
+        """
+        Rasterizes PDF pages and embeds them into DOCX as a non-blank fallback when
+        semantic text extraction is unavailable.
+        """
+        temp_img_dir = pdf_path.parent / "temp_docx_images"
+        temp_img_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            cmd = ["pdftoppm", "-png", "-r", "220", str(pdf_path), str(temp_img_dir / "page")]
+            self.run_subprocess(cmd, timeout=90)
+            images = sorted(temp_img_dir.glob("page-*.png"))
+            if not images:
+                raise FileNotFoundError("No images generated for image-based DOCX fallback.")
+
+            doc = Document()
+            for idx, image_path in enumerate(images):
+                if idx > 0:
+                    doc.add_page_break()
+                doc.add_picture(str(image_path), width=DocxInches(6.5))
+            doc.save(output_path)
+        finally:
+            if temp_img_dir.exists():
+                shutil.rmtree(temp_img_dir, ignore_errors=True)
 
     def _to_pptx(self, pdf_path: Path, output_path: Path) -> Path:
         """
