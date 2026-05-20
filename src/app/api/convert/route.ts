@@ -70,6 +70,23 @@ async function parseJsonSafe(response: Response) {
   }
 }
 
+function extractFilenameFromDisposition(disposition: string): string | null {
+  if (!disposition) return null;
+  const utf8Match = disposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      return utf8Match[1].trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  const quotedMatch = disposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (quotedMatch?.[1]) return quotedMatch[1].trim();
+  const plainMatch = disposition.match(/filename\s*=\s*([^;]+)/i);
+  if (plainMatch?.[1]) return plainMatch[1].trim().replace(/^["']|["']$/g, "");
+  return null;
+}
+
 async function fetchBackend(
   pathOrUrl: string,
   backendApiBase: string,
@@ -233,8 +250,7 @@ export async function POST(req: NextRequest) {
 
     const outputBuffer = Buffer.from(await downloadResponse.arrayBuffer());
     const backendDisposition = downloadResponse.headers.get("content-disposition") || "";
-    const backendNameMatch = backendDisposition.match(/filename="([^"]+)"/i);
-    const outFileName = backendNameMatch?.[1] || `${sourceBaseName}${targetExt}`;
+    const outFileName = extractFilenameFromDisposition(backendDisposition) || `${sourceBaseName}${targetExt}`;
     const normalizedOutExt = outFileName.includes(".")
       ? `.${outFileName.split(".").pop()!.toLowerCase()}`
       : targetExt;

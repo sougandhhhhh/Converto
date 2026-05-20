@@ -25,6 +25,23 @@ export interface UseConvertResult {
 type BackendConvertResponse = { task_id?: string };
 type BackendStatusResponse = { status?: string; error?: string };
 
+function extractFilenameFromDisposition(disposition: string): string | null {
+  if (!disposition) return null;
+  const utf8Match = disposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim().replace(/^["']|["']$/g, ""));
+    } catch {
+      return utf8Match[1].trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  const quotedMatch = disposition.match(/filename\s*=\s*"([^"]+)"/i);
+  if (quotedMatch?.[1]) return quotedMatch[1].trim();
+  const plainMatch = disposition.match(/filename\s*=\s*([^;]+)/i);
+  if (plainMatch?.[1]) return plainMatch[1].trim().replace(/^["']|["']$/g, "");
+  return null;
+}
+
 /**
  * A React hook to manage file conversions via the `/api/convert` endpoint.
  * @returns {UseConvertResult} An object containing the convert function and state indicators
@@ -160,8 +177,7 @@ export function useConvert(): UseConvertResult {
         const blob = await downloadRes.blob();
         const url = URL.createObjectURL(blob);
         const disposition = downloadRes.headers.get("content-disposition") || "";
-        const headerMatch = disposition.match(/filename="([^"]+)"/i);
-        const resolvedName = headerMatch?.[1] || `${file.name.replace(/\.[^/.]+$/, "")}${targetExt}`;
+        const resolvedName = extractFilenameFromDisposition(disposition) || `${file.name.replace(/\.[^/.]+$/, "")}${targetExt}`;
         setDownloadUrl(url);
         setDownloadName(resolvedName);
         setStatus("done");
@@ -230,8 +246,7 @@ export function useConvert(): UseConvertResult {
       }
 
       const routeDisposition = response.headers.get("content-disposition") || "";
-      const routeMatch = routeDisposition.match(/filename="([^"]+)"/i);
-      setDownloadName(routeMatch?.[1] || `${file.name.replace(/\.[^/.]+$/, "")}${toFormat}`);
+      setDownloadName(extractFilenameFromDisposition(routeDisposition) || `${file.name.replace(/\.[^/.]+$/, "")}${toFormat}`);
       setDownloadUrl(url);
       setStatus("done");
       setProgress(100);
