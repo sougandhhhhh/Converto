@@ -62,14 +62,14 @@ export function useConvert(): UseConvertResult {
 
     setStatus("uploading");
     setError(null);
-    setProgress(20);
+    setProgress(12);
     setDownloadUrl(null);
 
     try {
       const backendPublicBase = (process.env.NEXT_PUBLIC_CONVERTO_BACKEND_URL || "").replace(/\/$/, "");
       // Transition to converting state right before making the request
       setStatus("converting");
-      setProgress(60);
+      setProgress(28);
 
       let fileId: string | null = null;
 
@@ -90,6 +90,7 @@ export function useConvert(): UseConvertResult {
           throw new Error("Backend did not return file id after upload.");
         }
         fileId = uploadData.file_id;
+        setProgress(40);
       }
 
       // When direct backend URL is configured, keep the entire conversion flow
@@ -113,6 +114,7 @@ export function useConvert(): UseConvertResult {
         }
 
         const started = Date.now();
+        setProgress(46);
         while (Date.now() - started < DIRECT_CONVERSION_TIMEOUT_MS) {
           const statusRes = await fetch(`${backendPublicBase}/api/status/${convertData.task_id}`, {
             method: "GET",
@@ -125,6 +127,7 @@ export function useConvert(): UseConvertResult {
           const state = (statusData.status || "").toUpperCase();
 
           if (state === "SUCCESS") {
+            setProgress(92);
             break;
           }
           if (state === "FAILURE") {
@@ -132,7 +135,8 @@ export function useConvert(): UseConvertResult {
           }
 
           const elapsedRatio = Math.min(1, (Date.now() - started) / DIRECT_CONVERSION_TIMEOUT_MS);
-          setProgress(60 + Math.floor(elapsedRatio * 35));
+          // Keep visible momentum while backend works.
+          setProgress(46 + Math.floor(elapsedRatio * 44));
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
         }
 
@@ -148,6 +152,7 @@ export function useConvert(): UseConvertResult {
           throw new Error(t || "Converted file was not available for download.");
         }
 
+        setProgress(96);
         const blob = await downloadRes.blob();
         const url = URL.createObjectURL(blob);
         setDownloadUrl(url);
@@ -166,6 +171,7 @@ export function useConvert(): UseConvertResult {
       formData.append("format", fromFormat);
       formData.append("to", toFormat);
 
+      setProgress(46);
       const response = await fetch("/api/convert", {
         method: "POST",
         body: formData,
@@ -183,6 +189,7 @@ export function useConvert(): UseConvertResult {
         throw new Error(errMessage);
       }
 
+      setProgress(92);
       // Check if response is JSON (R2 signed URL) or PDF stream
       const contentType = response.headers.get("content-type");
       
@@ -209,6 +216,7 @@ export function useConvert(): UseConvertResult {
           url = URL.createObjectURL(jsonBlob);
         }
       } else {
+        setProgress(96);
         const blob = await response.blob();
         url = URL.createObjectURL(blob);
       }
