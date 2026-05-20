@@ -70,13 +70,34 @@ async function parseJsonSafe(response: Response) {
   }
 }
 
+async function fetchBackend(
+  pathOrUrl: string,
+  backendApiBase: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${backendApiBase}${pathOrUrl}`;
+  try {
+    return await fetch(url, {
+      ...init,
+      cache: "no-store",
+      signal: AbortSignal.timeout(CONVERSION_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown network error";
+    throw new Error(
+      `Could not reach conversion backend at ${backendApiBase}. ` +
+      `Make sure backend is running on localhost:8000 (docker compose up -d). ` +
+      `Original error: ${msg}`,
+    );
+  }
+}
+
 async function waitForConversion(taskId: string, backendApiBase: string): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < CONVERSION_TIMEOUT_MS) {
-    const statusResponse = await fetch(`${backendApiBase}/api/status/${taskId}`, {
+    const statusResponse = await fetchBackend(`/api/status/${taskId}`, backendApiBase, {
       method: "GET",
-      cache: "no-store",
     });
 
     if (!statusResponse.ok) {
@@ -142,10 +163,9 @@ export async function POST(req: NextRequest) {
       const uploadForm = new FormData();
       uploadForm.append("file", file, file.name);
 
-      const uploadResponse = await fetch(`${backendApiBase}/api/upload`, {
+      const uploadResponse = await fetchBackend("/api/upload", backendApiBase, {
         method: "POST",
         body: uploadForm,
-        cache: "no-store",
       });
 
       if (!uploadResponse.ok) {
@@ -177,9 +197,8 @@ export async function POST(req: NextRequest) {
     convertUrl.searchParams.set("file_id", resolvedFileId);
     convertUrl.searchParams.set("target_ext", targetExt);
 
-    const convertResponse = await fetch(convertUrl.toString(), {
+    const convertResponse = await fetchBackend(convertUrl.toString(), backendApiBase, {
       method: "POST",
-      cache: "no-store",
     });
 
     if (!convertResponse.ok) {
@@ -200,9 +219,8 @@ export async function POST(req: NextRequest) {
 
     await waitForConversion(convertData.task_id, backendApiBase);
 
-    const downloadResponse = await fetch(`${backendApiBase}/api/download/${convertData.task_id}`, {
+    const downloadResponse = await fetchBackend(`/api/download/${convertData.task_id}`, backendApiBase, {
       method: "GET",
-      cache: "no-store",
     });
 
     if (!downloadResponse.ok) {
