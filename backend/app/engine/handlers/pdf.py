@@ -168,15 +168,21 @@ class PDFHandler(BaseHandler):
     def _docx_has_content(self, docx_path: Path) -> bool:
         """
         Quick quality gate: verifies that generated DOCX contains meaningful body text
-        or embedded drawing/image references.
+        or embedded raster image media.
         """
         try:
             with zipfile.ZipFile(docx_path, "r") as zf:
                 xml = zf.read("word/document.xml").decode("utf-8", errors="ignore")
+                names = [e.filename.lower() for e in zf.infolist()]
             text_nodes = re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml, flags=re.DOTALL)
             meaningful_text = "".join(text_nodes).strip()
-            has_drawing = ("<w:drawing" in xml) or ("<v:shape" in xml)
-            return bool(meaningful_text) or has_drawing
+            has_raster_media = any(
+                name.startswith("word/media/") and name.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"))
+                for name in names
+            )
+            # Drawing-only DOCX shells can still render as blank in some viewers.
+            # Accept when we have meaningful text or concrete raster media.
+            return len(meaningful_text) >= 20 or has_raster_media
         except Exception as e:
             logger.warning(f"DOCX validation check failed for {docx_path}: {e}")
             return False
