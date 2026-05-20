@@ -21,6 +21,7 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 PDF_IMAGE_RENDER_TIMEOUT_SECONDS = 300
+PDF_IMAGE_RENDER_DPI_FAST = 170
 
 class PDFHandler(BaseHandler):
     """
@@ -32,9 +33,13 @@ class PDFHandler(BaseHandler):
 
     def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str) -> Path:
         to_ext = to_ext.lower()
-        output_dir = output_path.parent
+        image_targets = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
         logger.info(f"PDFHandler converting PDF -> {to_ext}")
+        # Fast path for image outputs: avoid expensive normalization/OCR heuristics.
+        if to_ext in image_targets:
+            return self._to_image(input_path, output_path, to_ext)
+
         pdf_source = self._normalize_pdf(input_path)
 
         # Detect if PDF is scanned (little to no extractable text)
@@ -63,7 +68,7 @@ class PDFHandler(BaseHandler):
                 return self._to_spreadsheet(pdf_source, output_path, to_ext)
             elif to_ext == ".txt":
                 return self._to_txt(pdf_source, output_path)
-            elif to_ext in [".jpg", ".jpeg", ".png", ".webp", ".heic"]:
+            elif to_ext in image_targets:
                 return self._to_image(pdf_source, output_path, to_ext)
             elif to_ext == ".html":
                 return self._to_html(pdf_source, output_path)
@@ -355,7 +360,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Render all pages to PNG
-            cmd = ["pdftoppm", "-png", "-r", "240", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", str(PDF_IMAGE_RENDER_DPI_FAST), str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=PDF_IMAGE_RENDER_TIMEOUT_SECONDS)
 
             extracted = sorted(list(temp_img_dir.glob("page-*.png")))
