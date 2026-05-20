@@ -4,9 +4,16 @@ import logging
 from pathlib import Path
 from PIL import Image
 import pytesseract
+from pytesseract import Output
 from docx import Document
 from docx.shared import Inches
 from app.engine.handlers.base import BaseHandler
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    HEIF_PLUGIN_ENABLED = True
+except Exception:
+    HEIF_PLUGIN_ENABLED = False
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +47,7 @@ class ImageHandler(BaseHandler):
         """
         temp_png = None
         try:
-            # For HEIC input, decode first
-            if from_ext == ".heic":
-                temp_png = input_path.parent / f"{input_path.stem}_temp.png"
-                cmd = ["heif-dec", str(input_path), str(temp_png)]
-                self.run_subprocess(cmd, timeout=30)
-                img_src = temp_png
-            else:
-                img_src = input_path
-
-            img = Image.open(img_src)
+            img = self._load_image(input_path)
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
             
@@ -67,23 +65,17 @@ class ImageHandler(BaseHandler):
         """
         temp_png = None
         try:
-            if input_path.suffix.lower() == ".heic":
-                temp_png = input_path.parent / f"{input_path.stem}_temp.png"
-                cmd = ["heif-dec", str(input_path), str(temp_png)]
-                self.run_subprocess(cmd, timeout=30)
-                ocr_src = temp_png
-            else:
-                ocr_src = input_path
-
             logger.info("Running Tesseract OCR on image...")
-            img = Image.open(ocr_src)
+            img = self._load_image(input_path)
             
-            # Extract text
+            # Extract text and geometric OCR blocks for better line reconstruction.
             try:
                 extracted_text = pytesseract.image_to_string(img, timeout=45)
+                data = pytesseract.image_to_data(img, output_type=Output.DICT, timeout=45)
             except Exception as e:
                 logger.warning(f"Tesseract extraction timed out or failed: {e}. Falling back to image embedding.")
                 extracted_text = ""
+                data = None
 
             cleaned_text = extracted_text.strip()
             
@@ -93,16 +85,26 @@ class ImageHandler(BaseHandler):
                 logger.info(f"Sufficient text detected ({len(cleaned_text)} chars). Generating editable paragraphs...")
                 doc.add_paragraph(f"--- OCR Extracted Text from: {input_path.name} ---")
                 doc.add_paragraph("")
-                for line in cleaned_text.split("\n"):
-                    line_strip = line.strip()
-                    if line_strip:
-                        doc.add_paragraph(line_strip)
+                structured_lines = self._lines_from_ocr_data(data)
+                if structured_lines:
+                    for line in structured_lines:
+                        doc.add_paragraph(line)
+                else:
+                    for line in cleaned_text.split("\n"):
+                        line_strip = line.strip()
+                        if line_strip:
+                            doc.add_paragraph(line_strip)
             else:
                 # Scanned confidence low, embed picture directly
                 logger.info("Low OCR confidence/length. Embedding picture as high-fidelity fallback.")
                 doc.add_paragraph(f"--- Embedded Image: {input_path.name} ---")
                 doc.add_paragraph("")
-                doc.add_picture(str(ocr_src), width=Inches(6.0))
+                embed_path = input_path
+                if input_path.suffix.lower() == ".heic":
+                    temp_png = input_path.parent / f"{input_path.stem}_embed_temp.png"
+                    img.convert("RGB").save(temp_png)
+                    embed_path = temp_png
+                doc.add_picture(str(embed_path), width=Inches(6.0))
 
             doc.save(output_path)
             logger.info(f"DOCX created successfully: {output_path}")
@@ -111,6 +113,38 @@ class ImageHandler(BaseHandler):
         finally:
             if temp_png and temp_png.exists():
                 temp_png.unlink()
+
+    def _lines_from_ocr_data(self, data) -> list[str]:
+        if not data or "text" not in data:
+            return []
+
+        grouped: dict[tuple[int, int, int], list[tuple[int, str]]] = {}
+        for i, raw_text in enumerate(data.get("text", [])):
+            text = (raw_text or "").strip()
+            if not text:
+                continue
+            conf_raw = str(data.get("conf", ["-1"])[i])
+            try:
+                conf = float(conf_raw)
+            except ValueError:
+                conf = -1.0
+            if conf < 45:
+                continue
+            key = (
+                int(data.get("block_num", [0])[i]),
+                int(data.get("par_num", [0])[i]),
+                int(data.get("line_num", [0])[i]),
+            )
+            left = int(data.get("left", [0])[i])
+            grouped.setdefault(key, []).append((left, text))
+
+        lines = []
+        for key in sorted(grouped.keys()):
+            words = [w for _, w in sorted(grouped[key], key=lambda it: it[0])]
+            line = " ".join(words).strip()
+            if line:
+                lines.append(line)
+        return lines
 
     def _to_image(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str) -> Path:
         """
@@ -132,27 +166,22 @@ class ImageHandler(BaseHandler):
         try:
             # 1. Decode HEIC if it's the source
             if from_ext == ".heic":
-                temp_png = input_path.parent / f"{input_path.stem}_temp.png"
-                cmd = ["heif-dec", str(input_path), str(temp_png)]
-                self.run_subprocess(cmd, timeout=30)
-                source_img = temp_png
+                source_img = input_path
             else:
                 source_img = input_path
 
             # 2. Encode to HEIC if it's the target
             if to_ext == ".heic":
-                if source_img == input_path:
-                    # Save a temp PNG first
-                    temp_png = input_path.parent / f"{input_path.stem}_temp.png"
-                    img = Image.open(input_path)
-                    img.save(temp_png)
-                
-                cmd = ["heif-enc", str(temp_png or source_img), str(output_path)]
-                self.run_subprocess(cmd, timeout=30)
-                return output_path
+                img = self._load_image(source_img)
+                try:
+                    cmd = ["heif-enc", str(source_img), str(output_path)]
+                    self.run_subprocess(cmd, timeout=30)
+                    return output_path
+                except Exception:
+                    return self._save_as_heic(img, output_path)
 
             # 3. Handle standard Pillow transformations (JPG, PNG, WEBP, GIF, AVIF)
-            img = Image.open(source_img)
+            img = self._load_image(source_img)
             
             # Format modifications for transparency loss in JPEGs
             if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
@@ -164,3 +193,21 @@ class ImageHandler(BaseHandler):
         finally:
             if temp_png and temp_png.exists():
                 temp_png.unlink()
+    def _load_image(self, path: Path) -> Image.Image:
+        try:
+            return Image.open(path)
+        except Exception:
+            if path.suffix.lower() == ".heic":
+                temp_png = path.parent / f"{path.stem}_decode_fallback.png"
+                cmd = ["heif-dec", str(path), str(temp_png)]
+                self.run_subprocess(cmd, timeout=30)
+                return Image.open(temp_png)
+            raise
+
+    def _save_as_heic(self, img: Image.Image, output_path: Path) -> Path:
+        if HEIF_PLUGIN_ENABLED:
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            img.save(output_path, format="HEIF", quality=90)
+            return output_path
+        raise RuntimeError("No HEIC encoder available in runtime.")

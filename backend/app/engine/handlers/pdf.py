@@ -10,6 +10,12 @@ from docx import Document
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from app.engine.handlers.base import BaseHandler
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    HEIF_PLUGIN_ENABLED = True
+except Exception:
+    HEIF_PLUGIN_ENABLED = False
 
 logger = logging.getLogger(__name__)
 
@@ -270,8 +276,16 @@ class PDFHandler(BaseHandler):
                 shutil.move(str(png_page), str(output_path))
             elif to_ext == ".heic":
                 # Convert PNG to HEIC using heif-enc
-                cmd = ["heif-enc", str(png_page), str(output_path)]
-                self.run_subprocess(cmd, timeout=30)
+                try:
+                    cmd = ["heif-enc", str(png_page), str(output_path)]
+                    self.run_subprocess(cmd, timeout=30)
+                except Exception:
+                    if not HEIF_PLUGIN_ENABLED:
+                        raise
+                    img = Image.open(png_page)
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGB")
+                    img.save(output_path, format="HEIF", quality=90)
             else:
                 # Pillow convert for JPG, JPEG, WEBP
                 img = Image.open(png_page)

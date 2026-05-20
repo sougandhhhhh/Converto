@@ -4,6 +4,9 @@ import zipfile
 import logging
 from pathlib import Path
 import pandas as pd
+from docx import Document
+from openpyxl import Workbook
+from pptx import Presentation
 from app.engine.handlers.base import BaseHandler
 
 logger = logging.getLogger(__name__)
@@ -56,6 +59,7 @@ class OfficeHandler(BaseHandler):
                 return output_path
             elif to_ext == ".xml":
                 df = pd.read_excel(input_path)
+                df.columns = [f"col_{idx}" for idx, _ in enumerate(df.columns, start=1)]
                 df.to_xml(output_path, index=False)
                 return output_path
             elif to_ext == ".txt":
@@ -68,7 +72,19 @@ class OfficeHandler(BaseHandler):
                 df.to_html(output_path, index=False, classes="table table-striped")
                 return output_path
 
-        # 4. Standard LibreOffice conversions
+        # 4. Semantic cross-format fallbacks for routes LibreOffice doesn't reliably support
+        if from_ext == ".docx" and to_ext == ".xlsx":
+            return self._docx_to_xlsx(input_path, output_path)
+        if from_ext == ".docx" and to_ext == ".pptx":
+            return self._docx_to_pptx(input_path, output_path)
+        if from_ext == ".pptx" and to_ext == ".docx":
+            return self._pptx_to_docx(input_path, output_path)
+        if from_ext == ".pptx" and to_ext == ".txt":
+            return self._pptx_to_txt(input_path, output_path)
+        if from_ext == ".xlsx" and to_ext == ".docx":
+            return self._xlsx_to_docx(input_path, output_path)
+
+        # 5. Standard LibreOffice conversions
         # Map target extension to LibreOffice filter formats
         format_map = {
             ".pdf": "pdf",
@@ -126,3 +142,81 @@ class OfficeHandler(BaseHandler):
                 raise FileNotFoundError(
                     f"LibreOffice execution completed but target file was not found at {lo_output_file}"
                 )
+
+    def _docx_to_xlsx(self, input_path: Path, output_path: Path) -> Path:
+        doc = Document(input_path)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Document"
+        ws.cell(row=1, column=1, value="Content")
+        row_idx = 2
+        for para in doc.paragraphs:
+            text = para.text.strip()
+            if text:
+                ws.cell(row=row_idx, column=1, value=text)
+                row_idx += 1
+        wb.save(output_path)
+        return output_path
+
+    def _docx_to_pptx(self, input_path: Path, output_path: Path) -> Path:
+        doc = Document(input_path)
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        prs = Presentation()
+        chunk_size = 8
+        for start in range(0, max(len(paragraphs), 1), chunk_size):
+            slide = prs.slides.add_slide(prs.slide_layouts[1])
+            slide.shapes.title.text = input_path.stem
+            body = slide.shapes.placeholders[1].text_frame
+            body.clear()
+            chunk = paragraphs[start : start + chunk_size] or ["(No extractable text)"]
+            for idx, line in enumerate(chunk):
+                if idx == 0:
+                    body.text = line
+                else:
+                    p = body.add_paragraph()
+                    p.text = line
+        prs.save(output_path)
+        return output_path
+
+    def _pptx_to_docx(self, input_path: Path, output_path: Path) -> Path:
+        prs = Presentation(input_path)
+        doc = Document()
+        for slide_index, slide in enumerate(prs.slides, start=1):
+            heading = doc.add_paragraph()
+            heading.add_run(f"Slide {slide_index}").bold = True
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    text = shape.text.strip()
+                    if text:
+                        doc.add_paragraph(text)
+        doc.save(output_path)
+        return output_path
+
+    def _pptx_to_txt(self, input_path: Path, output_path: Path) -> Path:
+        prs = Presentation(input_path)
+        lines = []
+        for slide_index, slide in enumerate(prs.slides, start=1):
+            lines.append(f"Slide {slide_index}")
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text:
+                    text = shape.text.strip()
+                    if text:
+                        lines.append(text)
+            lines.append("")
+        output_path.write_text("\n".join(lines).strip(), encoding="utf-8")
+        return output_path
+
+    def _xlsx_to_docx(self, input_path: Path, output_path: Path) -> Path:
+        df = pd.read_excel(input_path, dtype=str).fillna("")
+        doc = Document()
+        if df.empty:
+            doc.add_paragraph("(No spreadsheet content)")
+        else:
+            doc.add_paragraph("Spreadsheet Export").runs[0].bold = True
+            doc.add_paragraph("")
+            header = " | ".join([str(col) for col in df.columns])
+            doc.add_paragraph(header).runs[0].bold = True
+            for _, row in df.iterrows():
+                doc.add_paragraph(" | ".join([str(v) for v in row.tolist()]))
+        doc.save(output_path)
+        return output_path

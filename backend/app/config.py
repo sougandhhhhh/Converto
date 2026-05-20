@@ -5,8 +5,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Directories for temporary uploads and outputs (shared volume used by backend and worker)
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(BASE_DIR / "shared" / "uploads"))
-OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(BASE_DIR / "shared" / "outputs"))
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", str(BASE_DIR / "shared" / "uploads")))
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(BASE_DIR / "shared" / "outputs")))
 
 # Ensure directories exist at startup
 for _dir in (UPLOAD_DIR, OUTPUT_DIR):

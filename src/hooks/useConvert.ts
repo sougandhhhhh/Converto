@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { marked } from "marked";
 
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
 
@@ -12,7 +11,7 @@ export interface UseConvertResult {
 }
 
 /**
- * A React hook to manage file conversions via the `/api/convert` endpoint or direct Gotenberg calls.
+ * A React hook to manage file conversions via the `/api/convert` endpoint.
  * @returns {UseConvertResult} An object containing the convert function and state indicators
  */
 export function useConvert(): UseConvertResult {
@@ -42,58 +41,20 @@ export function useConvert(): UseConvertResult {
     setProgress(20);
     setDownloadUrl(null);
 
-    const gotenbergUrl = process.env.NEXT_PUBLIC_GOTENBERG_URL;
-    
-    // Direct Gotenberg conversion is only possible if NEXT_PUBLIC_GOTENBERG_URL is set
-    // AND the target format is PDF (.pdf) and source is one of the supported Gotenberg inputs.
-    const isDirectConvertible = gotenbergUrl && 
-      toFormat === ".pdf" &&
-      [
-        ".docx", ".doc", ".odt", ".txt",
-        ".xlsx", ".xls", ".csv",
-        ".pptx", ".ppt",
-        ".html", ".md"
-      ].includes(fromFormat);
-
     try {
       // Transition to converting state right before making the request
       setStatus("converting");
       setProgress(60);
 
-      let response: Response;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("format", fromFormat);
+      formData.append("to", toFormat);
 
-      if (isDirectConvertible) {
-        const formDataToSend = new FormData();
-        let endpoint = "";
-
-        if ([".docx", ".doc", ".odt", ".txt", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"].includes(fromFormat)) {
-          endpoint = "/forms/libreoffice/convert";
-          formDataToSend.append("files", file, file.name);
-        } else if (fromFormat === ".html") {
-          endpoint = "/forms/chromium/convert/html";
-          formDataToSend.append("files", file, "index.html");
-        } else if (fromFormat === ".md") {
-          const mdText = await file.text();
-          const htmlContent = await marked.parse(mdText);
-          endpoint = "/forms/chromium/convert/html";
-          formDataToSend.append("files", new Blob([htmlContent], { type: "text/html" }), "index.html");
-        }
-
-        response = await fetch(`${gotenbergUrl}${endpoint}`, {
-          method: "POST",
-          body: formDataToSend,
-        });
-      } else {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("format", fromFormat);
-        formData.append("to", toFormat);
-
-        response = await fetch("/api/convert", {
-          method: "POST",
-          body: formData,
-        });
-      }
+      const response = await fetch("/api/convert", {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         let errMessage = "Unknown conversion error";
