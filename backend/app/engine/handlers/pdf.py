@@ -23,16 +23,16 @@ logger = logging.getLogger(__name__)
 PDF_IMAGE_RENDER_TIMEOUT_SECONDS = 300
 QUALITY_PRESETS = {
     "fast": {
-        "image_dpi": 170,
-        "pptx_dpi": 170,
-        "docx_fallback_dpi": 170,
-        "zip_dpi": 120,
+        "image_dpi": 135,
+        "pptx_dpi": 140,
+        "docx_fallback_dpi": 140,
+        "zip_dpi": 100,
     },
     "high": {
-        "image_dpi": 240,
-        "pptx_dpi": 220,
-        "docx_fallback_dpi": 220,
-        "zip_dpi": 180,
+        "image_dpi": 300,
+        "pptx_dpi": 300,
+        "docx_fallback_dpi": 300,
+        "zip_dpi": 220,
     },
 }
 
@@ -140,6 +140,13 @@ class PDFHandler(BaseHandler):
 
     def _dpi(self, quality: str, key: str) -> int:
         return int(QUALITY_PRESETS.get(quality, QUALITY_PRESETS["fast"])[key])
+
+    def _image_save_kwargs(self, to_ext: str, quality: str) -> dict:
+        if to_ext in [".jpg", ".jpeg"]:
+            return {"quality": 82} if quality == "fast" else {"quality": 95}
+        if to_ext == ".webp":
+            return {"quality": 78, "method": 4} if quality == "fast" else {"quality": 95, "method": 6}
+        return {}
 
     def _to_docx(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
@@ -418,7 +425,7 @@ class PDFHandler(BaseHandler):
                         img = Image.open(png_path)
                         if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
                             img = img.convert("RGB")
-                        img.save(page_img_path)
+                        img.save(page_img_path, **self._image_save_kwargs(to_ext, quality))
                         zf.write(page_img_path, arcname=page_output_name)
                 return zip_output
 
@@ -443,7 +450,7 @@ class PDFHandler(BaseHandler):
                 img = Image.open(png_page)
                 if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
-                img.save(output_path)
+                img.save(output_path, **self._image_save_kwargs(to_ext, quality))
 
             return output_path
         finally:

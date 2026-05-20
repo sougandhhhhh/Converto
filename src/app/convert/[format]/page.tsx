@@ -237,9 +237,6 @@ function FileRow({ item, config, onRemove, forceConvert, quality, onStatusChange
 
           {status === "done" && (
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold select-none">
-                Done ✓
-              </span>
               {downloadUrl && (
                 <>
                   <button
