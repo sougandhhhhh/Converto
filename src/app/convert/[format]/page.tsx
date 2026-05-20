@@ -14,8 +14,15 @@ import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-const MAX_UPLOAD_MB = 4.5;
-const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
+const FALLBACK_VERCEL_LIMIT_MB = 4.5;
+const DIRECT_BACKEND_DEFAULT_LIMIT_MB = 50;
+
+function getClientUploadLimitMb(): number {
+  const configured = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB || "");
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  const hasDirectBackend = Boolean(process.env.NEXT_PUBLIC_CONVERTO_BACKEND_URL);
+  return hasDirectBackend ? DIRECT_BACKEND_DEFAULT_LIMIT_MB : FALLBACK_VERCEL_LIMIT_MB;
+}
 
 const MIME_TYPES: Record<string, string[]> = {
   ".pdf":  ["application/pdf"],
@@ -253,6 +260,8 @@ export default function ConvertPage() {
   const accent = config.accent ?? "#6366f1";
 
   const { theme } = useTheme();
+  const maxUploadMb = getClientUploadLimitMb();
+  const maxUploadBytes = Math.floor(maxUploadMb * 1024 * 1024);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [dropError, setDropError] = useState<string | null>(null);
   const [forceConvertAll, setForceConvertAll] = useState(false);
@@ -310,14 +319,14 @@ export default function ConvertPage() {
   }, []);
 
   const onDropRejected = useCallback(() => {
-    setDropError(`Upload limit: max ${MAX_UPLOAD_MB} MB per file.`);
-  }, []);
+    setDropError(`Upload limit: max ${maxUploadMb} MB per file.`);
+  }, [maxUploadMb]);
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     onDropRejected,
     accept: config.accept,
-    maxSize: MAX_UPLOAD_BYTES,
+    maxSize: maxUploadBytes,
     noClick: files.length > 0,
     multiple: true,
   });
@@ -410,7 +419,7 @@ export default function ConvertPage() {
 
               <div className="flex flex-wrap gap-2 justify-center">
                 <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
-                  Max {MAX_UPLOAD_MB} MB
+                  Max {maxUploadMb} MB
                 </span>
                 <span 
                   className="px-3 py-1 rounded-full border text-[10px] font-bold"

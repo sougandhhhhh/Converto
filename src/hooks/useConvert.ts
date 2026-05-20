@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
-const MAX_UPLOAD_MB = 4.5;
-const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
+const FALLBACK_VERCEL_LIMIT_MB = 4.5;
+const DIRECT_BACKEND_DEFAULT_LIMIT_MB = 50;
+
+function getClientUploadLimitMb(): number {
+  const configured = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB || "");
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  const hasDirectBackend = Boolean(process.env.NEXT_PUBLIC_CONVERTO_BACKEND_URL);
+  return hasDirectBackend ? DIRECT_BACKEND_DEFAULT_LIMIT_MB : FALLBACK_VERCEL_LIMIT_MB;
+}
 
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
 
@@ -38,9 +45,11 @@ export function useConvert(): UseConvertResult {
    * @param {string} toFormat The format of the target file (e.g., '.pdf')
    */
   const convert = async (file: File, fromFormat: string, toFormat: string) => {
-    if (file.size > MAX_UPLOAD_BYTES) {
+    const maxUploadMb = getClientUploadLimitMb();
+    const maxUploadBytes = Math.floor(maxUploadMb * 1024 * 1024);
+    if (file.size > maxUploadBytes) {
       setStatus("error");
-      setError(`File too large. Max ${MAX_UPLOAD_MB} MB per file.`);
+      setError(`File too large. Max ${maxUploadMb} MB per file.`);
       setProgress(0);
       setDownloadUrl(null);
       return;
