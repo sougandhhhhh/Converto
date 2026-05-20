@@ -111,8 +111,25 @@ export function useConvert(): UseConvertResult {
       let url = "";
 
       if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        url = data.url;
+        const text = await response.text();
+        let parsed: unknown = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = null;
+        }
+
+        // Support both legacy signed URL shape and raw JSON conversion outputs.
+        const maybeUrl = parsed && typeof parsed === "object" && "url" in parsed
+          ? (parsed as { url?: string }).url
+          : undefined;
+
+        if (maybeUrl && typeof maybeUrl === "string") {
+          url = maybeUrl;
+        } else {
+          const jsonBlob = new Blob([text], { type: "application/json" });
+          url = URL.createObjectURL(jsonBlob);
+        }
       } else {
         const blob = await response.blob();
         url = URL.createObjectURL(blob);
