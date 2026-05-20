@@ -116,28 +116,8 @@ class PDFHandler(BaseHandler):
         """
         Extracts semantic text paragraphs and compiles an editable Word Document.
         """
-        logger.info("Extracting paragraphs using pdfplumber...")
-        doc = Document()
-        has_text = False
-
-        try:
-            with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text()
-                    if text:
-                        has_text = True
-                        for line in text.split("\n"):
-                            line_strip = line.strip()
-                            if line_strip:
-                                doc.add_paragraph(line_strip)
-            if has_text:
-                doc.save(output_path)
-                logger.info(f"python-docx successfully saved editable document to {output_path}")
-                return output_path
-        except Exception as e:
-            logger.error(f"python-docx conversion failed: {e}. Falling back to LibreOffice PDF import...")
-
-        # Fallback: LibreOffice headless writer_pdf_import
+        # Prefer LibreOffice PDF import first for better layout fidelity.
+        logger.info("Attempting layout-preserving LibreOffice PDF import...")
         cmd = [
             "libreoffice",
             "--headless",
@@ -148,14 +128,33 @@ class PDFHandler(BaseHandler):
             str(output_path.parent),
             str(pdf_path),
         ]
-        self.run_subprocess(cmd, timeout=90)
-        expected_lo_file = output_path.parent / f"{pdf_path.stem}.docx"
-        if expected_lo_file.exists():
-            if expected_lo_file != output_path:
-                shutil.move(str(expected_lo_file), str(output_path))
+        try:
+            self.run_subprocess(cmd, timeout=120)
+            expected_lo_file = output_path.parent / f"{pdf_path.stem}.docx"
+            if expected_lo_file.exists():
+                if expected_lo_file != output_path:
+                    shutil.move(str(expected_lo_file), str(output_path))
+                return output_path
+        except Exception as e:
+            logger.warning(f"LibreOffice import failed: {e}. Falling back to text reconstruction.")
+
+        logger.info("Extracting paragraphs using pdfplumber fallback...")
+        doc = Document()
+        has_text = False
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    has_text = True
+                    for line in text.split("\n"):
+                        line_strip = line.strip()
+                        if line_strip:
+                            doc.add_paragraph(line_strip)
+        if has_text:
+            doc.save(output_path)
             return output_path
-        
-        raise RuntimeError("Failed to convert PDF to DOCX using all available pipelines.")
+
+        raise RuntimeError("Failed to convert PDF to DOCX using available pipelines.")
 
     def _to_pptx(self, pdf_path: Path, output_path: Path) -> Path:
         """
@@ -167,7 +166,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Extract PDF pages to PNGs
-            cmd = ["pdftoppm", "-png", "-r", "150", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", "220", str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=60)
 
             extracted_images = sorted(list(temp_img_dir.glob("page-*.png")))
@@ -176,9 +175,13 @@ class PDFHandler(BaseHandler):
 
             # 2. Build presentation using python-pptx
             prs = Presentation()
-            # Set slide size to standard widescreen (13.33 x 7.5 inches) or match first image aspect ratio
-            prs.slide_width = Inches(13.33)
-            prs.slide_height = Inches(7.5)
+            # Match slide aspect ratio to first PDF page image to reduce stretching/cropping.
+            with Image.open(extracted_images[0]) as first_img:
+                width_px, height_px = first_img.size
+            target_height = Inches(7.5)
+            target_width = int(target_height * (width_px / max(height_px, 1)))
+            prs.slide_width = target_width
+            prs.slide_height = target_height
             blank_slide_layout = prs.slide_layouts[6] # Blank slide layout
 
             for img_path in extracted_images:
@@ -209,10 +212,10 @@ class PDFHandler(BaseHandler):
 
         try:
             # Camelot lattice mode (works well for bordered grids)
-            tables = camelot.read_pdf(str(pdf_path), pages="all", flavor="lattice")
+            tables = camelot.read_pdf(str(pdf_path), pages="all", flavor="lattice", line_scale=40)
             if not tables or len(tables) == 0:
                 # Retry stream mode for borderless tables
-                tables = camelot.read_pdf(str(pdf_path), pages="all", flavor="stream")
+                tables = camelot.read_pdf(str(pdf_path), pages="all", flavor="stream", row_tol=10, column_tol=10)
             
             for t in tables:
                 tables_df.append(t.df)
@@ -296,7 +299,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Render first page to PNG
-            cmd = ["pdftoppm", "-png", "-f", "1", "-l", "1", "-r", "150", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-f", "1", "-l", "1", "-r", "240", str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=30)
 
             extracted = list(temp_img_dir.glob("page-*.png"))

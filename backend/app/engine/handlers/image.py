@@ -3,6 +3,8 @@ import shutil
 import logging
 from pathlib import Path
 from PIL import Image
+from PIL import ImageOps
+from PIL import ImageFilter
 import pytesseract
 from pytesseract import Output
 from docx import Document
@@ -72,11 +74,12 @@ class ImageHandler(BaseHandler):
         try:
             logger.info("Running Tesseract OCR on image...")
             img = self._load_image(input_path)
+            ocr_img = self._preprocess_for_ocr(img)
             
             # Extract text and geometric OCR blocks for better line reconstruction.
             try:
-                extracted_text = pytesseract.image_to_string(img, timeout=45)
-                data = pytesseract.image_to_data(img, output_type=Output.DICT, timeout=45)
+                extracted_text = pytesseract.image_to_string(ocr_img, timeout=45)
+                data = pytesseract.image_to_data(ocr_img, output_type=Output.DICT, timeout=45)
             except Exception as e:
                 logger.warning(f"Tesseract extraction timed out or failed: {e}. Falling back to image embedding.")
                 extracted_text = ""
@@ -84,7 +87,7 @@ class ImageHandler(BaseHandler):
 
             cleaned_text = extracted_text.strip()
             if len(cleaned_text) <= 15:
-                easy_text = self._extract_text_easyocr(img)
+                easy_text = self._extract_text_easyocr(ocr_img)
                 if easy_text:
                     cleaned_text = easy_text
             
@@ -234,6 +237,13 @@ class ImageHandler(BaseHandler):
     def _extract_text_easyocr(self, img: Image.Image) -> str:
         if not EASYOCR_ENABLED:
             return ""
+
+    def _preprocess_for_ocr(self, img: Image.Image) -> Image.Image:
+        # Normalize color and contrast to improve OCR accuracy, especially for HEIC captures.
+        base = img.convert("L")
+        boosted = ImageOps.autocontrast(base, cutoff=2)
+        denoised = boosted.filter(ImageFilter.MedianFilter(size=3))
+        return denoised
         try:
             reader = easyocr.Reader(["en"], gpu=False, verbose=False)
             results = reader.readtext(img, detail=1, paragraph=False)

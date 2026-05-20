@@ -90,7 +90,7 @@ class OfficeHandler(BaseHandler):
         # 5. Standard LibreOffice conversions
         # Map target extension to LibreOffice filter formats
         format_map = {
-            ".pdf": "pdf",
+            ".pdf": "pdf:writer_pdf_Export",
             ".docx": "docx:MS Word 2007 XML",
             ".pptx": "pptx:Impress MS PowerPoint 2007 XML",
             ".xlsx": "xlsx:Calc MS Excel 2007 XML",

@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     poppler-utils \
     libreoffice \
+    fonts-dejavu \
+    fonts-liberation \
+    fonts-noto-core \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
