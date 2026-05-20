@@ -42,12 +42,39 @@ export function useConvert(): UseConvertResult {
     setDownloadUrl(null);
 
     try {
+      const backendPublicBase = (process.env.NEXT_PUBLIC_CONVERTO_BACKEND_URL || "").replace(/\/$/, "");
       // Transition to converting state right before making the request
       setStatus("converting");
       setProgress(60);
 
+      let fileId: string | null = null;
+
+      // Direct upload from browser to backend avoids Vercel payload limits.
+      if (backendPublicBase) {
+        const uploadForm = new FormData();
+        uploadForm.append("file", file);
+        const uploadRes = await fetch(`${backendPublicBase}/api/upload`, {
+          method: "POST",
+          body: uploadForm,
+        });
+        if (!uploadRes.ok) {
+          const uploadText = await uploadRes.text();
+          throw new Error(uploadText || "Direct upload to backend failed.");
+        }
+        const uploadData = await uploadRes.json() as { file_id?: string };
+        if (!uploadData.file_id) {
+          throw new Error("Backend did not return file id after upload.");
+        }
+        fileId = uploadData.file_id;
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      if (fileId) {
+        formData.append("file_id", fileId);
+        formData.append("file_name", file.name);
+      } else {
+        formData.append("file", file);
+      }
       formData.append("format", fromFormat);
       formData.append("to", toFormat);
 

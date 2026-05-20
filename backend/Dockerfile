@@ -9,9 +9,11 @@ WORKDIR /app
 # Install runtime system deps:
 # - curl: health checks
 # - poppler-utils: provides pdftoppm used for PDF -> image conversions
+# - libreoffice: required for office/text rendering pathways
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     poppler-utils \
+    libreoffice \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

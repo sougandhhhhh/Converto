@@ -193,7 +193,7 @@ class ImageHandler(BaseHandler):
             img = self._load_image(source_img)
             
             # Format modifications for transparency loss in JPEGs
-            if to_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
+            if to_ext in [".jpg", ".jpeg"] and img.mode != "RGB":
                 img = img.convert("RGB")
             save_kwargs = self._metadata_kwargs(img)
             img.save(output_path, **save_kwargs)

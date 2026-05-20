@@ -112,17 +112,20 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file");
+    const fileId = formData.get("file_id");
     const format = formData.get("format");
     const to = formData.get("to");
 
-    if (!(file instanceof File) || typeof format !== "string" || typeof to !== "string") {
+    const hasFile = file instanceof File;
+    const hasFileId = typeof fileId === "string" && fileId.trim().length > 0;
+    if ((!hasFile && !hasFileId) || typeof format !== "string" || typeof to !== "string") {
       return NextResponse.json(
-        { error: "Conversion failed", details: "Missing or invalid file/format parameters." },
+        { error: "Conversion failed", details: "Missing or invalid file/file_id/format parameters." },
         { status: 400 },
       );
     }
 
-    if (file.size > 50 * 1024 * 1024) {
+    if (hasFile && file.size > 50 * 1024 * 1024) {
       return NextResponse.json(
         { error: "Conversion failed", details: "File too large (max 50MB)." },
         { status: 413 },
@@ -130,37 +133,46 @@ export async function POST(req: NextRequest) {
     }
 
     const targetExt = normalizeExt(to);
+    let resolvedFileId = hasFileId ? fileId.trim() : "";
+    let sourceBaseName = "converted";
 
-    const uploadForm = new FormData();
-    uploadForm.append("file", file, file.name);
+    if (hasFile) {
+      const uploadForm = new FormData();
+      uploadForm.append("file", file, file.name);
 
-    const uploadResponse = await fetch(`${backendApiBase}/api/upload`, {
-      method: "POST",
-      body: uploadForm,
-      cache: "no-store",
-    });
+      const uploadResponse = await fetch(`${backendApiBase}/api/upload`, {
+        method: "POST",
+        body: uploadForm,
+        cache: "no-store",
+      });
 
-    if (!uploadResponse.ok) {
-      const body = await parseJsonSafe(uploadResponse);
-      return NextResponse.json(
-        {
-          error: "Conversion failed",
-          details: body?.detail || "Upload to conversion backend failed.",
-        },
-        { status: 502 },
-      );
-    }
+      if (!uploadResponse.ok) {
+        const body = await parseJsonSafe(uploadResponse);
+        return NextResponse.json(
+          {
+            error: "Conversion failed",
+            details: body?.detail || "Upload to conversion backend failed.",
+          },
+          { status: 502 },
+        );
+      }
 
-    const uploadData = (await uploadResponse.json()) as { file_id?: string };
-    if (!uploadData.file_id) {
-      return NextResponse.json(
-        { error: "Conversion failed", details: "Backend did not return a file identifier." },
-        { status: 502 },
-      );
+      const uploadData = (await uploadResponse.json()) as { file_id?: string };
+      if (!uploadData.file_id) {
+        return NextResponse.json(
+          { error: "Conversion failed", details: "Backend did not return a file identifier." },
+          { status: 502 },
+        );
+      }
+      resolvedFileId = uploadData.file_id;
+      sourceBaseName = file.name.replace(/\.[^/.]+$/, "");
+    } else if (hasFileId) {
+      const incomingName = typeof formData.get("file_name") === "string" ? String(formData.get("file_name")) : "";
+      sourceBaseName = (incomingName || fileId.trim()).replace(/\.[^/.]+$/, "");
     }
 
     const convertUrl = new URL(`${backendApiBase}/api/convert`);
-    convertUrl.searchParams.set("file_id", uploadData.file_id);
+    convertUrl.searchParams.set("file_id", resolvedFileId);
     convertUrl.searchParams.set("target_ext", targetExt);
 
     const convertResponse = await fetch(convertUrl.toString(), {
@@ -200,8 +212,7 @@ export async function POST(req: NextRequest) {
     }
 
     const outputBuffer = Buffer.from(await downloadResponse.arrayBuffer());
-    const baseName = file.name.replace(/\.[^/.]+$/, "");
-    const outFileName = `${baseName}${targetExt}`;
+    const outFileName = `${sourceBaseName}${targetExt}`;
 
     return new NextResponse(new Uint8Array(outputBuffer), {
       headers: {
