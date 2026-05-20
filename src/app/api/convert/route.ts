@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-
-const BACKEND_API_BASE = (
-  process.env.CONVERTO_BACKEND_URL ||
-  process.env.BACKEND_URL ||
-  "http://localhost:8000"
-).replace(/\/$/, "");
+export const runtime = "nodejs";
 
 const OUTPUT_CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -41,6 +36,25 @@ type BackendStatusResponse = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function getBackendApiBase(): string | null {
+  const raw =
+    process.env.CONVERTO_BACKEND_URL ||
+    process.env.BACKEND_URL ||
+    "http://localhost:8000";
+  const normalized = raw.replace(/\/$/, "");
+
+  // In production (e.g. Vercel), localhost resolves to the serverless function itself.
+  // That backend is not present there, so fail early with a clear config error.
+  if (
+    process.env.NODE_ENV === "production" &&
+    /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(normalized)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function normalizeExt(input: string): string {
   const ext = input.trim().toLowerCase();
   return ext.startsWith(".") ? ext : `.${ext}`;
@@ -54,11 +68,11 @@ async function parseJsonSafe(response: Response) {
   }
 }
 
-async function waitForConversion(taskId: string): Promise<void> {
+async function waitForConversion(taskId: string, backendApiBase: string): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < CONVERSION_TIMEOUT_MS) {
-    const statusResponse = await fetch(`${BACKEND_API_BASE}/api/status/${taskId}`, {
+    const statusResponse = await fetch(`${backendApiBase}/api/status/${taskId}`, {
       method: "GET",
       cache: "no-store",
     });
@@ -84,6 +98,18 @@ async function waitForConversion(taskId: string): Promise<void> {
 
 export async function POST(req: NextRequest) {
   try {
+    const backendApiBase = getBackendApiBase();
+    if (!backendApiBase) {
+      return NextResponse.json(
+        {
+          error: "Conversion failed",
+          details:
+            "Backend URL is not configured for production. Set CONVERTO_BACKEND_URL in Vercel to your public backend URL.",
+        },
+        { status: 500 },
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file");
     const format = formData.get("format");
@@ -108,7 +134,7 @@ export async function POST(req: NextRequest) {
     const uploadForm = new FormData();
     uploadForm.append("file", file, file.name);
 
-    const uploadResponse = await fetch(`${BACKEND_API_BASE}/api/upload`, {
+    const uploadResponse = await fetch(`${backendApiBase}/api/upload`, {
       method: "POST",
       body: uploadForm,
       cache: "no-store",
@@ -133,7 +159,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const convertUrl = new URL(`${BACKEND_API_BASE}/api/convert`);
+    const convertUrl = new URL(`${backendApiBase}/api/convert`);
     convertUrl.searchParams.set("file_id", uploadData.file_id);
     convertUrl.searchParams.set("target_ext", targetExt);
 
@@ -158,9 +184,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await waitForConversion(convertData.task_id);
+    await waitForConversion(convertData.task_id, backendApiBase);
 
-    const downloadResponse = await fetch(`${BACKEND_API_BASE}/api/download/${convertData.task_id}`, {
+    const downloadResponse = await fetch(`${backendApiBase}/api/download/${convertData.task_id}`, {
       method: "GET",
       cache: "no-store",
     });
