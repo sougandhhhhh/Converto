@@ -35,14 +35,17 @@ async def upload_file(file: UploadFile = File(...)):
     return {"file_id": file_path.name}
 
 @router.post("/convert")
-async def request_conversion(file_id: str, target_ext: str, background_tasks: BackgroundTasks):
+async def request_conversion(file_id: str, target_ext: str, background_tasks: BackgroundTasks, quality: str = "fast"):
     input_path = UPLOAD_DIR / file_id
     if not input_path.exists():
         raise HTTPException(status_code=404, detail="Uploaded file not found")
     if not target_ext.startswith('.'):
         target_ext = f'.{target_ext}'
+    quality = (quality or "fast").strip().lower()
+    if quality not in {"fast", "high"}:
+        raise HTTPException(status_code=400, detail="Invalid quality value. Use 'fast' or 'high'.")
     if USE_CELERY:
-      task = convert_file.delay(str(input_path), target_ext)
+      task = convert_file.delay(str(input_path), target_ext, quality)
       # Optionally schedule cleanup of temp workspace after some time
       background_tasks.add_task(run_garbage_collection)
       return {"task_id": task.id}
@@ -51,7 +54,7 @@ async def request_conversion(file_id: str, target_ext: str, background_tasks: Ba
     task_id = str(uuid4())
     SYNC_TASKS[task_id] = {"status": "PROCESSING"}
     try:
-      output_path = convert_file.run(str(input_path), target_ext)
+      output_path = convert_file.run(str(input_path), target_ext, quality)
       SYNC_TASKS[task_id] = {"status": "SUCCESS", "output_path": output_path}
     except Exception as exc:
       SYNC_TASKS[task_id] = {"status": "FAILURE", "error": str(exc)}

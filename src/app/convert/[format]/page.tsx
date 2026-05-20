@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useConvert, ConvertStatus } from "@/hooks/useConvert";
+import { useConvert, ConvertStatus, ConversionQuality } from "@/hooks/useConvert";
 import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -84,8 +84,9 @@ function getConfigForSlug(slug: string) {
 interface FileItem { id: string; file: File; }
 type ConverterConfig = ReturnType<typeof getConfigForSlug>;
 
-function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
+function FileRow({ item, config, onRemove, forceConvert, quality, onStatusChange }: {
   item: FileItem; config: ConverterConfig; onRemove: (id: string) => void; forceConvert: boolean;
+  quality: ConversionQuality;
   onStatusChange?: (id: string, status: ConvertStatus, downloadUrl: string | null, downloadName: string | null) => void;
 }) {
   const { convert, status, error, progress, downloadUrl, downloadName } = useConvert();
@@ -93,8 +94,8 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
   const isDark = theme === "dark";
 
   useEffect(() => {
-    if (forceConvert && status === "idle") convert(item.file, config.from, config.to);
-  }, [forceConvert, status, convert, item.file, config.from, config.to]);
+    if (forceConvert && status === "idle") convert(item.file, config.from, config.to, quality);
+  }, [forceConvert, status, convert, item.file, config.from, config.to, quality]);
 
   useEffect(() => {
     if (onStatusChange) {
@@ -209,7 +210,7 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
                 <X size={15} />
               </button>
               <button
-                onClick={() => convert(item.file, config.from, config.to)}
+                onClick={() => convert(item.file, config.from, config.to, quality)}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
@@ -269,7 +270,7 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
                 <X size={15} />
               </button>
               <button
-                onClick={() => convert(item.file, config.from, config.to)}
+                onClick={() => convert(item.file, config.from, config.to, quality)}
                 className="px-4 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-500 text-xs font-bold hover:bg-rose-500/25 transition-all cursor-pointer"
               >
                 Retry
@@ -295,6 +296,7 @@ export default function ConvertPage() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [dropError, setDropError] = useState<string | null>(null);
   const [forceConvertAll, setForceConvertAll] = useState(false);
+  const [quality, setQuality] = useState<ConversionQuality>("fast");
   const [fileStates, setFileStates] = useState<Record<string, { status: ConvertStatus; downloadUrl: string | null; downloadName: string | null }>>({});
 
   const handleStatusChange = useCallback((id: string, status: ConvertStatus, downloadUrl: string | null, downloadName: string | null) => {
@@ -394,7 +396,7 @@ export default function ConvertPage() {
             >
               <FileText size={20} style={{ color: accent }} />
             </div>
-            <div>
+          <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 {config.title}
               </h1>
@@ -403,8 +405,31 @@ export default function ConvertPage() {
               </p>
             </div>
           </div>
-
-
+          <div className="w-full sm:w-auto">
+            <p className="text-[11px] font-semibold text-muted-foreground mb-2 tracking-wide">Conversion Quality</p>
+            <div className="inline-flex rounded-xl border border-border/40 bg-card/60 p-1">
+              <button
+                type="button"
+                onClick={() => setQuality("fast")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  quality === "fast" ? "text-white" : "text-muted-foreground hover:text-foreground"
+                }`}
+                style={quality === "fast" ? { background: `linear-gradient(135deg, ${accent}, ${accent}cc)` } : undefined}
+              >
+                Fast
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuality("high")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  quality === "high" ? "text-white" : "text-muted-foreground hover:text-foreground"
+                }`}
+                style={quality === "high" ? { background: "linear-gradient(135deg, #14b8a6, #0d9488)" } : undefined}
+              >
+                High Quality
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Converter Area */}
@@ -489,6 +514,7 @@ export default function ConvertPage() {
                       config={config} 
                       onRemove={handleRemove} 
                       forceConvert={forceConvertAll} 
+                      quality={quality}
                       onStatusChange={handleStatusChange}
                     />
                   ))}

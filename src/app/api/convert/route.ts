@@ -36,6 +36,7 @@ type BackendStatusResponse = {
   output_path?: string;
   error?: string;
 };
+type ConversionQuality = "fast" | "high";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -61,6 +62,10 @@ function getBackendApiBase(): string | null {
 function normalizeExt(input: string): string {
   const ext = input.trim().toLowerCase();
   return ext.startsWith(".") ? ext : `.${ext}`;
+}
+
+function normalizeQuality(input: unknown): ConversionQuality {
+  return String(input || "").toLowerCase() === "high" ? "high" : "fast";
 }
 
 async function parseJsonSafe(response: Response) {
@@ -156,6 +161,7 @@ export async function POST(req: NextRequest) {
     const fileId = formData.get("file_id");
     const format = formData.get("format");
     const to = formData.get("to");
+    const quality = normalizeQuality(formData.get("quality"));
 
     const hasFile = file instanceof File;
     const hasFileId = typeof fileId === "string" && fileId.trim().length > 0;
@@ -214,6 +220,7 @@ export async function POST(req: NextRequest) {
     const convertUrl = new URL(`${backendApiBase}/api/convert`);
     convertUrl.searchParams.set("file_id", resolvedFileId);
     convertUrl.searchParams.set("target_ext", targetExt);
+    convertUrl.searchParams.set("quality", quality);
 
     const convertResponse = await fetchBackend(convertUrl.toString(), backendApiBase, {
       method: "POST",

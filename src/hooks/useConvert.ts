@@ -12,9 +12,10 @@ function getClientUploadLimitMb(): number {
 }
 
 export type ConvertStatus = "idle" | "uploading" | "converting" | "done" | "error";
+export type ConversionQuality = "fast" | "high";
 
 export interface UseConvertResult {
-  convert: (file: File, fromFormat: string, toFormat: string) => Promise<void>;
+  convert: (file: File, fromFormat: string, toFormat: string, quality?: ConversionQuality) => Promise<void>;
   status: ConvertStatus;
   error: string | null;
   progress: number;
@@ -68,7 +69,7 @@ export function useConvert(): UseConvertResult {
    * @param {string} fromFormat The format of the source file (e.g., '.docx')
    * @param {string} toFormat The format of the target file (e.g., '.pdf')
    */
-  const convert = async (file: File, fromFormat: string, toFormat: string) => {
+  const convert = async (file: File, fromFormat: string, toFormat: string, quality: ConversionQuality = "fast") => {
     const maxUploadMb = getClientUploadLimitMb();
     const maxUploadBytes = Math.floor(maxUploadMb * 1024 * 1024);
     if (file.size > maxUploadBytes) {
@@ -121,6 +122,7 @@ export function useConvert(): UseConvertResult {
         const convertUrl = new URL(`${backendPublicBase}/api/convert`);
         convertUrl.searchParams.set("file_id", fileId);
         convertUrl.searchParams.set("target_ext", targetExt);
+        convertUrl.searchParams.set("quality", quality);
 
         const convertRes = await fetch(convertUrl.toString(), {
           method: "POST",
@@ -199,6 +201,7 @@ export function useConvert(): UseConvertResult {
       }
       formData.append("format", fromFormat);
       formData.append("to", toFormat);
+      formData.append("quality", quality);
 
       setProgress(46);
       const response = await fetch("/api/convert", {

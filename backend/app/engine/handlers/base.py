@@ -12,7 +12,7 @@ class BaseHandler:
     Provides standard helper utilities for executing OS commands safely.
     """
     
-    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str) -> Path:
+    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str, quality: str = "fast") -> Path:
         """
         Executes the conversion from from_ext to to_ext.
         Should return the path of the generated target file.

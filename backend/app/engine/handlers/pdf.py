@@ -21,7 +21,20 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 PDF_IMAGE_RENDER_TIMEOUT_SECONDS = 300
-PDF_IMAGE_RENDER_DPI_FAST = 170
+QUALITY_PRESETS = {
+    "fast": {
+        "image_dpi": 170,
+        "pptx_dpi": 170,
+        "docx_fallback_dpi": 170,
+        "zip_dpi": 120,
+    },
+    "high": {
+        "image_dpi": 240,
+        "pptx_dpi": 220,
+        "docx_fallback_dpi": 220,
+        "zip_dpi": 180,
+    },
+}
 
 class PDFHandler(BaseHandler):
     """
@@ -31,14 +44,15 @@ class PDFHandler(BaseHandler):
     and python-pptx / python-docx for semantic reconstructions.
     """
 
-    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str) -> Path:
+    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str, quality: str = "fast") -> Path:
         to_ext = to_ext.lower()
         image_targets = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+        quality = self._normalize_quality(quality)
 
-        logger.info(f"PDFHandler converting PDF -> {to_ext}")
+        logger.info(f"PDFHandler converting PDF -> {to_ext} quality={quality}")
         # Fast path for image outputs: avoid expensive normalization/OCR heuristics.
         if to_ext in image_targets:
-            return self._to_image(input_path, output_path, to_ext)
+            return self._to_image(input_path, output_path, to_ext, quality=quality)
 
         pdf_source = self._normalize_pdf(input_path)
 
@@ -61,19 +75,19 @@ class PDFHandler(BaseHandler):
         try:
             # Route to the appropriate sub-pipeline
             if to_ext == ".docx":
-                return self._to_docx(pdf_source, output_path)
+                return self._to_docx(pdf_source, output_path, quality=quality)
             elif to_ext == ".pptx":
-                return self._to_pptx(pdf_source, output_path)
+                return self._to_pptx(pdf_source, output_path, quality=quality)
             elif to_ext in [".xlsx", ".csv"]:
                 return self._to_spreadsheet(pdf_source, output_path, to_ext)
             elif to_ext == ".txt":
                 return self._to_txt(pdf_source, output_path)
             elif to_ext in image_targets:
-                return self._to_image(pdf_source, output_path, to_ext)
+                return self._to_image(pdf_source, output_path, to_ext, quality=quality)
             elif to_ext == ".html":
                 return self._to_html(pdf_source, output_path)
             elif to_ext == ".zip":
-                return self._to_zip(pdf_source, output_path)
+                return self._to_zip(pdf_source, output_path, quality=quality)
             else:
                 raise ValueError(f"PDFHandler does not support target: {to_ext}")
         finally:
@@ -120,7 +134,14 @@ class PDFHandler(BaseHandler):
             logger.error(f"Error checking if PDF is scanned: {e}")
             return False
 
-    def _to_docx(self, pdf_path: Path, output_path: Path) -> Path:
+    def _normalize_quality(self, quality: str) -> str:
+        quality = (quality or "fast").strip().lower()
+        return quality if quality in QUALITY_PRESETS else "fast"
+
+    def _dpi(self, quality: str, key: str) -> int:
+        return int(QUALITY_PRESETS.get(quality, QUALITY_PRESETS["fast"])[key])
+
+    def _to_docx(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
         Extracts semantic text paragraphs and compiles an editable Word Document.
         """
@@ -146,7 +167,7 @@ class PDFHandler(BaseHandler):
             return output_path
 
         logger.warning("No extractable text found. Building image-based DOCX fallback to avoid blank output.")
-        self._pdf_pages_to_docx_images(pdf_path, output_path)
+        self._pdf_pages_to_docx_images(pdf_path, output_path, quality=quality)
         if self._docx_has_content(output_path):
             return output_path
 
@@ -193,7 +214,7 @@ class PDFHandler(BaseHandler):
             logger.warning(f"Problematic VML detection failed for {docx_path}: {e}")
             return False
 
-    def _pdf_pages_to_docx_images(self, pdf_path: Path, output_path: Path) -> None:
+    def _pdf_pages_to_docx_images(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> None:
         """
         Rasterizes PDF pages and embeds them into DOCX as a non-blank fallback when
         semantic text extraction is unavailable.
@@ -201,7 +222,7 @@ class PDFHandler(BaseHandler):
         temp_img_dir = pdf_path.parent / "temp_docx_images"
         temp_img_dir.mkdir(parents=True, exist_ok=True)
         try:
-            cmd = ["pdftoppm", "-png", "-r", "220", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", str(self._dpi(quality, "docx_fallback_dpi")), str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=90)
             images = sorted(temp_img_dir.glob("page-*.png"))
             if not images:
@@ -217,7 +238,7 @@ class PDFHandler(BaseHandler):
             if temp_img_dir.exists():
                 shutil.rmtree(temp_img_dir, ignore_errors=True)
 
-    def _to_pptx(self, pdf_path: Path, output_path: Path) -> Path:
+    def _to_pptx(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
         Converts PDF pages to PNGs, then sets each page as a full-bleed slide in a Presentation.
         """
@@ -227,7 +248,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Extract PDF pages to PNGs
-            cmd = ["pdftoppm", "-png", "-r", "220", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", str(self._dpi(quality, "pptx_dpi")), str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=60)
 
             extracted_images = sorted(list(temp_img_dir.glob("page-*.png")))
@@ -350,7 +371,7 @@ class PDFHandler(BaseHandler):
         output_path.write_text("\n\n--- PAGE BREAK ---\n\n".join(content), encoding="utf-8")
         return output_path
 
-    def _to_image(self, pdf_path: Path, output_path: Path, to_ext: str) -> Path:
+    def _to_image(self, pdf_path: Path, output_path: Path, to_ext: str, quality: str = "fast") -> Path:
         """
         Converts PDF to PNG/JPEG/WEBP/HEIC.
         For multi-page PDFs, returns a ZIP containing one image per page.
@@ -360,7 +381,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Render all pages to PNG
-            cmd = ["pdftoppm", "-png", "-r", str(PDF_IMAGE_RENDER_DPI_FAST), str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", str(self._dpi(quality, "image_dpi")), str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=PDF_IMAGE_RENDER_TIMEOUT_SECONDS)
 
             extracted = sorted(list(temp_img_dir.glob("page-*.png")))
@@ -461,7 +482,7 @@ class PDFHandler(BaseHandler):
         output_path.write_text(html_template, encoding="utf-8")
         return output_path
 
-    def _to_zip(self, pdf_path: Path, output_path: Path) -> Path:
+    def _to_zip(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
         Converts all pages of a PDF to high-fidelity images, packaging them neatly into a single ZIP.
         """
@@ -470,7 +491,7 @@ class PDFHandler(BaseHandler):
 
         try:
             # 1. Render all pages
-            cmd = ["pdftoppm", "-png", "-r", "150", str(pdf_path), str(temp_img_dir / "page")]
+            cmd = ["pdftoppm", "-png", "-r", str(self._dpi(quality, "zip_dpi")), str(pdf_path), str(temp_img_dir / "page")]
             self.run_subprocess(cmd, timeout=60)
 
             extracted = list(temp_img_dir.glob("page-*.png"))

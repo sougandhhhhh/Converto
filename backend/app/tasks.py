@@ -7,7 +7,7 @@ from app.engine.dispatcher import dispatch_conversion, init_dispatcher
 
 
 @celery_app.task(name="convert_file")
-def convert_file(input_path_str: str, target_ext: str) -> str:
+def convert_file(input_path_str: str, target_ext: str, quality: str = "fast") -> str:
     """Celery task to convert a file to the desired format.
 
     Parameters
@@ -31,7 +31,7 @@ def convert_file(input_path_str: str, target_ext: str) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Run the conversion pipeline
-    result_path = dispatch_conversion(input_path, output_dir, input_path.suffix, target_ext)
+    result_path = dispatch_conversion(input_path, output_dir, input_path.suffix, target_ext, quality)
 
     # Return the string representation for the API layer
     return str(result_path)

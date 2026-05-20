@@ -31,7 +31,7 @@ class ImageHandler(BaseHandler):
     direct Image-to-PDF rendering, and Tesseract-powered Image-to-DOCX OCR.
     """
 
-    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str) -> Path:
+    def convert(self, input_path: Path, output_path: Path, from_ext: str, to_ext: str, quality: str = "fast") -> Path:
         from_ext = from_ext.lower()
         to_ext = to_ext.lower()
 

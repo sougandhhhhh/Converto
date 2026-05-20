@@ -80,7 +80,7 @@ def init_dispatcher():
     _INITIALIZED = True
     logger.info("All 72+ conversion pipelines successfully mapped in the registry!")
 
-def dispatch_conversion(input_path: Path, output_dir: Path, from_ext: str, to_ext: str) -> Path:
+def dispatch_conversion(input_path: Path, output_dir: Path, from_ext: str, to_ext: str, quality: str = "fast") -> Path:
     """
     Triggers the appropriate conversion engine handler for the requested formats.
     """
@@ -90,7 +90,7 @@ def dispatch_conversion(input_path: Path, output_dir: Path, from_ext: str, to_ex
     from_ext = from_ext.lower()
     to_ext = to_ext.lower()
     
-    logger.info(f"Dispatching conversion: {input_path.name} ({from_ext.upper()} -> {to_ext.upper()})")
+    logger.info(f"Dispatching conversion: {input_path.name} ({from_ext.upper()} -> {to_ext.upper()}) quality={quality}")
     logger.info("Route strategy: %s", " -> ".join(get_route_strategy(from_ext, to_ext)))
     
     # Resolve the handler
@@ -102,7 +102,7 @@ def dispatch_conversion(input_path: Path, output_dir: Path, from_ext: str, to_ex
     output_path = output_dir / output_filename
     
     # Execute conversion
-    result_path = handler.convert(input_path, output_path, from_ext, to_ext)
+    result_path = handler.convert(input_path, output_path, from_ext, to_ext, quality=quality)
     
     if not result_path or not result_path.exists():
         raise FileNotFoundError(f"Conversion engine failed to produce output file: {output_filename}")
