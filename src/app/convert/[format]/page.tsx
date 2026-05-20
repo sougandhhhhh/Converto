@@ -105,8 +105,7 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
   const accent = config.accent ?? "#6366f1";
   const isProcessing = status === "uploading" || status === "converting";
   const isArchiveOutput = Boolean(downloadName && downloadName.toLowerCase().endsWith(".zip"));
-  const isPdfToImageFlow =
-    config.from === ".pdf" && [".jpg", ".jpeg", ".png", ".webp", ".heic"].includes(config.to);
+  const isImageTargetFlow = [".jpg", ".jpeg", ".png", ".webp", ".heic"].includes(config.to);
 
   const downloadAsFile = useCallback((url: string, name: string) => {
     const a = document.createElement("a");
@@ -248,7 +247,7 @@ function FileRow({ item, config, onRemove, forceConvert, onStatusChange }: {
                   >
                     <Download size={13} /> {isArchiveOutput ? "Download ZIP" : "Download"}
                   </button>
-                  {isPdfToImageFlow && isArchiveOutput && (
+                  {isImageTargetFlow && isArchiveOutput && (
                     <button
                       onClick={downloadAllImagesFromZip}
                       className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer"
