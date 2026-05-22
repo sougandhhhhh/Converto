@@ -1,6 +1,8 @@
 from pathlib import Path
 from uuid import uuid4
 from typing import Dict, Any
+import os
+import time
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, status
 from fastapi.responses import JSONResponse, FileResponse
 from celery.result import AsyncResult
@@ -12,8 +14,25 @@ from app.utils.validation import validate_file, sanitize_filename
 from app.utils.file_manager import run_garbage_collection
 
 router = APIRouter()
-USE_CELERY = False
+USE_CELERY = os.getenv("USE_CELERY", "false").strip().lower() in {"1", "true", "yes", "on"}
+SYNC_TASK_TIMEOUT_SECONDS = int(os.getenv("SYNC_TASK_TIMEOUT_SECONDS", "900"))
 SYNC_TASKS: Dict[str, Dict[str, Any]] = {}
+
+
+def _run_sync_conversion(task_id: str, input_path: Path, target_ext: str, quality: str) -> None:
+    try:
+        output_path = convert_file.run(str(input_path), target_ext, quality)
+        SYNC_TASKS[task_id] = {
+            "status": "SUCCESS",
+            "output_path": output_path,
+            "updated_at": time.time(),
+        }
+    except Exception as exc:
+        SYNC_TASKS[task_id] = {
+            "status": "FAILURE",
+            "error": str(exc),
+            "updated_at": time.time(),
+        }
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_file(file: UploadFile = File(...)):
@@ -50,14 +69,10 @@ async def request_conversion(file_id: str, target_ext: str, background_tasks: Ba
       background_tasks.add_task(run_garbage_collection)
       return {"task_id": task.id}
 
-    # Free-tier sync fallback: run conversion inline and cache task-like result.
+    # Free-tier fallback: still async from API perspective (run in background task).
     task_id = str(uuid4())
-    SYNC_TASKS[task_id] = {"status": "PROCESSING"}
-    try:
-      output_path = convert_file.run(str(input_path), target_ext, quality)
-      SYNC_TASKS[task_id] = {"status": "SUCCESS", "output_path": output_path}
-    except Exception as exc:
-      SYNC_TASKS[task_id] = {"status": "FAILURE", "error": str(exc)}
+    SYNC_TASKS[task_id] = {"status": "PROCESSING", "started_at": time.time(), "updated_at": time.time()}
+    background_tasks.add_task(_run_sync_conversion, task_id, input_path, target_ext, quality)
     background_tasks.add_task(run_garbage_collection)
     return {"task_id": task_id}
 
@@ -65,6 +80,12 @@ async def request_conversion(file_id: str, target_ext: str, background_tasks: Ba
 async def get_status(task_id: str):
     if task_id in SYNC_TASKS:
         task = SYNC_TASKS[task_id]
+        if task.get("status") == "PROCESSING":
+            started = float(task.get("started_at") or 0)
+            if started and (time.time() - started) > SYNC_TASK_TIMEOUT_SECONDS:
+                task["status"] = "FAILURE"
+                task["error"] = "Conversion timed out while processing."
+                task["updated_at"] = time.time()
         response = {"status": task.get("status", "PENDING")}
         if task.get("status") == "SUCCESS":
             response["output_path"] = task.get("output_path")

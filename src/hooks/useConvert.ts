@@ -3,6 +3,8 @@ const FALLBACK_VERCEL_LIMIT_MB = 4.5;
 const DIRECT_BACKEND_DEFAULT_LIMIT_MB = 50;
 const POLL_INTERVAL_MS = 1200;
 const DIRECT_CONVERSION_TIMEOUT_MS = 8 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 60_000;
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 function getClientUploadLimitMb(): number {
   const configured = Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB || "");
@@ -41,6 +43,16 @@ function extractFilenameFromDisposition(disposition: string): string | null {
   const plainMatch = disposition.match(/filename\s*=\s*([^;]+)/i);
   if (plainMatch?.[1]) return plainMatch[1].trim().replace(/^["']|["']$/g, "");
   return null;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
@@ -99,10 +111,10 @@ export function useConvert(): UseConvertResult {
       if (backendPublicBase) {
         const uploadForm = new FormData();
         uploadForm.append("file", file);
-        const uploadRes = await fetch(`${backendPublicBase}/api/upload`, {
+        const uploadRes = await fetchWithTimeout(`${backendPublicBase}/api/upload`, {
           method: "POST",
           body: uploadForm,
-        });
+        }, UPLOAD_TIMEOUT_MS);
         if (!uploadRes.ok) {
           const uploadText = await uploadRes.text();
           throw new Error(uploadText || "Direct upload to backend failed.");
@@ -124,9 +136,9 @@ export function useConvert(): UseConvertResult {
         convertUrl.searchParams.set("target_ext", targetExt);
         convertUrl.searchParams.set("quality", quality);
 
-        const convertRes = await fetch(convertUrl.toString(), {
+        const convertRes = await fetchWithTimeout(convertUrl.toString(), {
           method: "POST",
-        });
+        }, REQUEST_TIMEOUT_MS);
         if (!convertRes.ok) {
           const t = await convertRes.text();
           throw new Error(t || "Failed to enqueue backend conversion.");
@@ -139,9 +151,9 @@ export function useConvert(): UseConvertResult {
         const started = Date.now();
         setProgress(46);
         while (Date.now() - started < DIRECT_CONVERSION_TIMEOUT_MS) {
-          const statusRes = await fetch(`${backendPublicBase}/api/status/${convertData.task_id}`, {
+          const statusRes = await fetchWithTimeout(`${backendPublicBase}/api/status/${convertData.task_id}`, {
             method: "GET",
-          });
+          }, REQUEST_TIMEOUT_MS);
           if (!statusRes.ok) {
             const t = await statusRes.text();
             throw new Error(t || "Failed to read backend conversion status.");
@@ -167,9 +179,9 @@ export function useConvert(): UseConvertResult {
           throw new Error("Conversion timed out. Please try again.");
         }
 
-        const downloadRes = await fetch(`${backendPublicBase}/api/download/${convertData.task_id}`, {
+        const downloadRes = await fetchWithTimeout(`${backendPublicBase}/api/download/${convertData.task_id}`, {
           method: "GET",
-        });
+        }, REQUEST_TIMEOUT_MS);
         if (!downloadRes.ok) {
           const t = await downloadRes.text();
           throw new Error(t || "Converted file was not available for download.");
@@ -204,10 +216,10 @@ export function useConvert(): UseConvertResult {
       formData.append("quality", quality);
 
       setProgress(46);
-      const response = await fetch("/api/convert", {
+      const response = await fetchWithTimeout("/api/convert", {
         method: "POST",
         body: formData,
-      });
+      }, DIRECT_CONVERSION_TIMEOUT_MS);
 
       if (!response.ok) {
         let errMessage = "Unknown conversion error";
@@ -260,7 +272,10 @@ export function useConvert(): UseConvertResult {
       setProgress(100);
     } catch (err) {
       setStatus("error");
-      const errorMessage = err instanceof Error ? err.message : String(err);
+      let errorMessage = err instanceof Error ? err.message : String(err);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        errorMessage = "Request timed out while contacting conversion service. Please try again.";
+      }
       setError(errorMessage || "An unexpected error occurred during conversion.");
       setProgress(0);
     }
