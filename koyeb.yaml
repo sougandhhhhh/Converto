@@ -9,3 +9,28 @@ services:
       - http:
           path: /health
           port: 3000
+
+  - name: backend
+    docker:
+      dockerfile: Dockerfile.backend
+    ports:
+      - port: 8000
+        protocol: http
+    env:
+      - key: GOTENBERG_URL
+        value: "http://gotenberg:3000"
+      - key: UPLOAD_DIR
+        value: "/tmp/converto/uploads"
+      - key: OUTPUT_DIR
+        value: "/tmp/converto/outputs"
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
+      - key: FILE_RETENTION_MINUTES
+        value: "30"
+    routes:
+      - path: /
+        port: 8000
+    health_checks:
+      - http:
+          path: /
+          port: 8000

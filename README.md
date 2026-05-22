@@ -48,6 +48,7 @@ Convert anything, to anything. **Next.js 16** + **FastAPI** powered platform sup
 **🏗️ Infrastructure**
 - [Docker Compose](https://docs.docker.com/compose/) — local development (Redis, backend, worker, Gotenberg)
 - [Cloudflare R2 / AWS S3](https://aws.amazon.com/s3/) — optional file storage for large uploads
+- [Koyeb](https://www.koyeb.com/) — production backend hosting (Gotenberg + FastAPI)
 
 ---
 
@@ -148,14 +149,32 @@ npm run gotenberg
 
 ## 🌍 Deployment
 
-Converto is designed for **[Vercel](https://vercel.com/)** (frontend) + **[Koyeb](https://www.koyeb.com/)** (Gotenberg backend):
+Converto is designed for **[Vercel](https://vercel.com/)** (frontend) + **[Koyeb](https://www.koyeb.com/)** (backend):
+
+| Component | Platform | Service |
+|-----------|----------|---------|
+| 🌐 Frontend (Next.js) | Vercel | — |
+| 🐍 Backend API (FastAPI) | Koyeb | `backend` |
+| 📄 PDF Engine (Gotenberg) | Koyeb | `gotenberg` |
 
 ```bash
-# Deploy backend to Koyeb
+# Deploy all Koyeb services
 koyeb deploy -f koyeb.yaml
 ```
 
-Set `GOTENBERG_URL` in your Vercel dashboard to point to your Koyeb Gotenberg instance.
+### Required env vars on Koyeb (backend service)
+
+The backend service auto-discovers Gotenberg via internal networking (`http://gotenberg:3000`).
+
+### Required env vars on Vercel
+
+| Variable | Value |
+|----------|-------|
+| `CONVERTO_BACKEND_URL` | `https://backend-<app>.koyeb.app` |
+| `NEXT_PUBLIC_CONVERTO_BACKEND_URL` | `https://backend-<app>.koyeb.app` |
+| `GOTENBERG_URL` | `https://gotenberg-<app>.koyeb.app` |
+
+Replace `<app>` with your Koyeb app name.
 
 ---
 
@@ -173,6 +192,9 @@ backend/
   Dockerfile         🐳 FastAPI server image
   Dockerfile.worker  🐳 Celery worker image
   requirements.txt   📦 Python dependencies
+
+(root)
+  Dockerfile.backend 🐳 Combined production image for Koyeb deployment
   app/
     main.py          🚀 FastAPI entrypoint
     api/routes.py    🌐 REST endpoints
