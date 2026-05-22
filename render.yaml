@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: gotenberg
+    runtime: image
+    image:
+      url: gotenberg/gotenberg:8
+    plan: free
+    ports:
+      - port: 3000
+    healthCheckPath: /health
+
+  - type: web
+    name: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    ports:
+      - port: 8000
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: redis
+          property: connectionString
+      - key: GOTENBERG_URL
+        value: http://gotenberg:3000
+      - key: UPLOAD_DIR
+        value: /tmp/converto/uploads
+      - key: OUTPUT_DIR
+        value: /tmp/converto/outputs
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
+      - key: FILE_RETENTION_MINUTES
+        value: "30"
+      - key: USE_CELERY
+        value: "true"
+
+  - type: worker
+    name: worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.worker
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: redis
+          property: connectionString
+      - key: UPLOAD_DIR
+        value: /tmp/converto/uploads
+      - key: OUTPUT_DIR
+        value: /tmp/converto/outputs
+      - key: MAX_FILE_SIZE_MB
+        value: "50"
+      - key: FILE_RETENTION_MINUTES
+        value: "30"
+
+keyvalue:
+  - name: redis
+    plan: free

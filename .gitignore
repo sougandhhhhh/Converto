@@ -50,3 +50,10 @@ pnpm-workspace.yaml
 
 # large installers
 *.exe
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# throwaway repos for GitHub badge grinding
+badge-*/
