@@ -411,22 +411,106 @@ class PDFHandler(BaseHandler):
             if rows:
                 cleaned = pd.DataFrame(rows, columns=["A", "B"])
 
-        # Parse common date/datetime strings so Excel stores real date values.
+        cleaned = cleaned.reset_index(drop=True)
+
+        # PAN-document-aware canonical shape (editable cells, cloudconvert-like).
+        canonical = self._build_pan_record_table(cleaned)
+        if canonical is not None:
+            return canonical
+
+        # Generic normalization for non-PAN docs.
         if cleaned.shape[1] >= 2:
             key_col = cleaned.columns[0]
             val_col = cleaned.columns[1]
-            parsed_vals = []
-            for k, v in zip(cleaned[key_col].tolist(), cleaned[val_col].tolist()):
-                key = str(k).upper()
-                val = str(v).strip()
-                parsed = self._try_parse_excel_datetime(val)
-                if parsed and ("DATE" in key or "BIRTH" in key or "VERIFIED" in key):
-                    parsed_vals.append(parsed)
-                else:
-                    parsed_vals.append(v)
-            cleaned[val_col] = parsed_vals
+            cleaned[val_col] = [str(v).strip() for v in cleaned[val_col].tolist()]
+        return cleaned
 
-        return cleaned.reset_index(drop=True)
+    def _build_pan_record_table(self, cleaned):
+        import pandas as pd
+
+        # Flatten rows into readable logical lines.
+        lines = []
+        for _, row in cleaned.iterrows():
+            vals = [str(v).strip() for v in row.tolist() if str(v).strip()]
+            if not vals:
+                continue
+            lines.append(" ".join(vals))
+
+        if not lines:
+            return None
+
+        full_text = " ".join(lines).upper()
+        if "PAN VERIFICATION RECORD" not in full_text:
+            return None
+
+        # Remove signature/noise lines that cloud-style XLSX omits from the core table.
+        keep_lines = []
+        for line in lines:
+            u = line.upper()
+            if u.startswith("DIGITALLY SIGNED"):
+                continue
+            if u.startswith("NOTE"):
+                continue
+            if "POWERED BY TCPDF" in u:
+                continue
+            if "(CID:" in u:
+                continue
+            keep_lines.append(line)
+
+        pan = ""
+        name = ""
+        gender = ""
+        dob = ""
+        verified = ""
+        has_title = False
+        has_pan_label = False
+
+        for line in keep_lines:
+            u = line.upper()
+            if "PAN VERIFICATION RECORD" in u:
+                has_title = True
+            if "PERMANENT ACCOUNT NUMBER" in u:
+                has_pan_label = True
+
+            m = re.search(r"\b([A-Z]{5}[0-9]{4}[A-Z])\b", u)
+            if m:
+                pan = m.group(1)
+
+            if u.startswith("NAME "):
+                name = line[5:].strip()
+            elif u == "NAME":
+                name = ""
+
+            if u.startswith("GENDER "):
+                gender = line[7:].strip()
+
+            if u.startswith("DATE OF BIRTH "):
+                dob = line[14:].strip()
+
+            if u.startswith("VERIFIED ON "):
+                verified = line[12:].strip()
+
+        if not has_title or not has_pan_label:
+            return None
+
+        # Preserve user-friendly display format like cloud output.
+        dob_dt = self._try_parse_excel_datetime(dob)
+        if dob_dt:
+            dob = dob_dt.strftime("%d-%m-%Y")
+        ver_dt = self._try_parse_excel_datetime(verified)
+        if ver_dt:
+            verified = ver_dt.strftime("%d-%m-%Y %H:%M:%S")
+
+        rows = [
+            ["PAN VERIFICATION RECORD", ""],
+            ["Permanent Account Number", ""],
+            [pan, ""],
+            ["NAME", name],
+            ["GENDER", gender],
+            ["DATE OF BIRTH", dob],
+            ["VERIFIED ON", verified],
+        ]
+        return pd.DataFrame(rows, columns=["A", "B"])
 
     def _try_parse_excel_datetime(self, value: str):
         if not value:
@@ -439,29 +523,62 @@ class PDFHandler(BaseHandler):
         return None
 
     def _postformat_xlsx(self, workbook):
-        from openpyxl.styles import Alignment, Font
+        from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
         for ws in workbook.worksheets:
-            # Basic width and alignment polish.
-            ws.column_dimensions["A"].width = 32
-            ws.column_dimensions["B"].width = 26
+            # Match cloud-like geometry.
+            ws.column_dimensions["A"].width = 22
+            ws.column_dimensions["B"].width = 60
             for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=2):
                 for cell in row:
                     cell.alignment = Alignment(vertical="center", wrap_text=True)
 
-            # Merge single-value title rows across A:B (similar to cloud converter outputs).
-            for r in range(1, ws.max_row + 1):
-                a = ws.cell(r, 1).value
-                b = ws.cell(r, 2).value
-                if a and (b is None or str(b).strip() == "") and str(a).strip():
+            # Canonical PAN block styling.
+            is_pan = str(ws.cell(1, 1).value or "").upper().strip() == "PAN VERIFICATION RECORD"
+            if is_pan:
+                # Merge title rows.
+                for r in (1, 2, 3):
                     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
-                    ws.cell(r, 1).font = Font(bold=True)
 
-            # Emphasize first key/value rows.
-            for r in range(1, min(ws.max_row, 10) + 1):
-                key = ws.cell(r, 1).value
-                if isinstance(key, str) and key.strip().isupper():
-                    ws.cell(r, 1).font = Font(bold=True)
+                ws.cell(1, 1).alignment = Alignment(horizontal="center", vertical="center")
+                ws.cell(2, 1).alignment = Alignment(horizontal="center", vertical="center")
+                ws.cell(3, 1).alignment = Alignment(horizontal="center", vertical="center")
+
+                ws.cell(1, 1).font = Font(bold=False, size=26)
+                ws.cell(2, 1).font = Font(bold=False, size=16)
+                ws.cell(3, 1).font = Font(bold=False, size=28)
+
+                for r in range(4, 8):
+                    ws.cell(r, 1).font = Font(bold=True, size=16)
+                    ws.cell(r, 2).font = Font(bold=False, size=16)
+
+                # Light gray block look like cloud output.
+                gray = PatternFill(fill_type="solid", fgColor="E8ECEC")
+                for r in range(1, 8):
+                    for c in (1, 2):
+                        ws.cell(r, c).fill = gray
+
+                # Thin grid border around A1:B7.
+                thin = Side(style="thin", color="B7B7B7")
+                border = Border(left=thin, right=thin, top=thin, bottom=thin)
+                for r in range(1, 8):
+                    for c in (1, 2):
+                        ws.cell(r, c).border = border
+
+                # Row heights for visual hierarchy.
+                ws.row_dimensions[1].height = 36
+                ws.row_dimensions[2].height = 28
+                ws.row_dimensions[3].height = 40
+                for r in range(4, 8):
+                    ws.row_dimensions[r].height = 38
+            else:
+                # Generic fallback styling.
+                for r in range(1, ws.max_row + 1):
+                    a = ws.cell(r, 1).value
+                    b = ws.cell(r, 2).value
+                    if a and (b is None or str(b).strip() == "") and str(a).strip():
+                        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
+                        ws.cell(r, 1).font = Font(bold=True)
 
     def _to_txt(self, pdf_path: Path, output_path: Path) -> Path:
         """
