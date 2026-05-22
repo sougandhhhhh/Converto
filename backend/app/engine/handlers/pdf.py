@@ -585,7 +585,12 @@ class PDFHandler(BaseHandler):
         if self._try_pdftohtml(pdf_path, output_path):
             return output_path
 
-        # 3) Last fallback: semantic text extraction template
+        # 3) Fidelity fallback: render each PDF page as image and wrap in HTML.
+        # This preserves layout/branding even when html converters are unavailable.
+        if self._to_html_as_images(pdf_path, output_path):
+            return output_path
+
+        # 4) Last fallback: semantic text extraction template
         html_blocks = []
         with pdfplumber.open(pdf_path) as pdf:
             for idx, page in enumerate(pdf.pages):
@@ -617,6 +622,64 @@ class PDFHandler(BaseHandler):
 """
         output_path.write_text(html_template, encoding="utf-8")
         return output_path
+
+    def _to_html_as_images(self, pdf_path: Path, output_path: Path) -> bool:
+        temp_img_dir = pdf_path.parent / "temp_html_images"
+        temp_img_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            # 170 DPI keeps text crisp without huge HTML output.
+            cmd = ["pdftoppm", "-png", "-r", "170", str(pdf_path), str(temp_img_dir / "page")]
+            self.run_subprocess(cmd, timeout=PDF_IMAGE_RENDER_TIMEOUT_SECONDS)
+
+            pages = sorted(temp_img_dir.glob("page-*.png"))
+            if not pages:
+                return False
+
+            page_nodes = []
+            for p in pages:
+                b64 = base64.b64encode(p.read_bytes()).decode("ascii")
+                page_nodes.append(
+                    "<div class='page'><img alt='PDF page' "
+                    f"src='data:image/png;base64,{b64}'/></div>"
+                )
+
+            html_out = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Converted Document</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 22px 0;
+      background: #d8dbe0;
+      font-family: Arial, sans-serif;
+    }
+    .page {
+      width: fit-content;
+      margin: 0 auto 18px auto;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+    .page img {
+      display: block;
+      max-width: min(96vw, 1100px);
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+""" + "\n".join(page_nodes) + """
+</body>
+</html>"""
+            output_path.write_text(html_out, encoding="utf-8")
+            return True
+        except Exception as e:
+            logger.info(f"Image-based HTML fallback failed: {e}")
+            return False
+        finally:
+            if temp_img_dir.exists():
+                shutil.rmtree(temp_img_dir, ignore_errors=True)
 
     def _try_pdf2htmlex(self, pdf_path: Path, output_path: Path) -> bool:
         try:
