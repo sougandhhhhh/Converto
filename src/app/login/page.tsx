@@ -2,15 +2,16 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Mail, Lock, User, ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function LoginPage({ defaultIsLogin = true }: { defaultIsLogin?: boolean }) {
+export default function LoginPage() {
   const router = useRouter();
-  const [isLogin, setIsLogin] = useState(defaultIsLogin);
+  const pathname = usePathname();
+  const [isLogin, setIsLogin] = useState(pathname !== "/register");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
