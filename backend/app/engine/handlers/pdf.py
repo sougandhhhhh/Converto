@@ -4,6 +4,8 @@ import zipfile
 import logging
 import re
 import html
+import base64
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 from PIL import Image
@@ -621,8 +623,16 @@ class PDFHandler(BaseHandler):
             self.run_subprocess(
                 [
                     "pdf2htmlEX",
-                    "--embed",
-                    "cfijo",
+                    "--embed-css",
+                    "1",
+                    "--embed-font",
+                    "1",
+                    "--embed-image",
+                    "1",
+                    "--embed-javascript",
+                    "1",
+                    "--embed-outline",
+                    "0",
                     "--dest-dir",
                     str(output_path.parent),
                     str(pdf_path),
@@ -630,7 +640,10 @@ class PDFHandler(BaseHandler):
                 ],
                 timeout=180,
             )
-            return output_path.exists() and output_path.stat().st_size > 0
+            if not (output_path.exists() and output_path.stat().st_size > 0):
+                return False
+            self._inline_local_assets(output_path)
+            return not self._looks_broken_html(output_path)
         except Exception as e:
             logger.info(f"pdf2htmlEX unavailable/failed, trying pdftohtml fallback: {e}")
             return False
@@ -657,11 +670,89 @@ class PDFHandler(BaseHandler):
             if produced.exists() and produced.stat().st_size > 0:
                 if produced != output_path:
                     shutil.move(str(produced), str(output_path))
-                return True
+                self._inline_local_assets(output_path)
+                return not self._looks_broken_html(output_path)
             return False
         except Exception as e:
             logger.info(f"pdftohtml unavailable/failed, falling back to text-template HTML: {e}")
             return False
+
+    def _looks_broken_html(self, html_path: Path) -> bool:
+        """
+        Heuristic: detect common broken-render output where text layers exist but
+        referenced background/image assets are missing.
+        """
+        try:
+            src = html_path.read_text(encoding="utf-8", errors="ignore").lower()
+            if "background image" in src:
+                return True
+            # Has image tags but none are embedded/absolute after inlining attempt.
+            img_refs = re.findall(r"""<img[^>]+src=["']([^"']+)["']""", src, flags=re.I)
+            if img_refs and all((not s.startswith("data:")) for s in img_refs):
+                return True
+            return False
+        except Exception:
+            return True
+
+    def _inline_local_assets(self, html_path: Path) -> None:
+        """
+        Replace local img/src and stylesheet href assets with data-URIs so the HTML
+        remains portable and does not break when moved between folders/machines.
+        """
+        try:
+            src = html_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return
+
+        base_dir = html_path.parent
+
+        def to_data_uri(asset_rel: str) -> str:
+            if asset_rel.startswith(("data:", "http://", "https://", "//", "#")):
+                return asset_rel
+            asset_path = (base_dir / asset_rel).resolve()
+            if not asset_path.exists() or not asset_path.is_file():
+                return asset_rel
+            mime, _ = mimetypes.guess_type(str(asset_path))
+            mime = mime or "application/octet-stream"
+            raw = asset_path.read_bytes()
+            b64 = base64.b64encode(raw).decode("ascii")
+            return f"data:{mime};base64,{b64}"
+
+        def replace_img(m):
+            before, url, after = m.group(1), m.group(2), m.group(3)
+            return f'{before}{to_data_uri(url)}{after}'
+
+        def replace_link_css(m):
+            whole, href = m.group(0), m.group(1)
+            data = to_data_uri(href)
+            if data == href:
+                return whole
+            # Convert CSS file to an inline <style> when possible.
+            if data.startswith("data:text/css;base64,"):
+                try:
+                    css_raw = base64.b64decode(data.split(",", 1)[1]).decode("utf-8", errors="ignore")
+                    return f"<style>{css_raw}</style>"
+                except Exception:
+                    return whole
+            return whole
+
+        src = re.sub(
+            r"""(<img[^>]+src=["'])([^"']+)(["'])""",
+            replace_img,
+            src,
+            flags=re.I,
+        )
+        src = re.sub(
+            r"""<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["'][^>]*>""",
+            replace_link_css,
+            src,
+            flags=re.I,
+        )
+
+        try:
+            html_path.write_text(src, encoding="utf-8")
+        except Exception:
+            pass
 
     def _to_zip(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
