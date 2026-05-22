@@ -3,6 +3,8 @@ import shutil
 import zipfile
 import logging
 import re
+import html
+from datetime import datetime
 from pathlib import Path
 from PIL import Image
 import pdfplumber
@@ -335,20 +337,129 @@ class PDFHandler(BaseHandler):
                         paragraphs.extend([[line] for line in text.split("\n")])
             tables_df.append(pd.DataFrame(paragraphs, columns=["Extracted Content"]))
 
+        # Normalize noisy extraction output so XLSX resembles polished converters:
+        # - drop empty rows/cols
+        # - remove synthetic numeric header row (0..n)
+        # - collapse to compact key/value shape when appropriate
+        normalized_tables = [self._normalize_extracted_table(df) for df in tables_df]
+
         # Save to XLSX or CSV
         if to_ext == ".xlsx":
             with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-                for idx, df in enumerate(tables_df):
+                for idx, df in enumerate(normalized_tables):
                     sheet_name = f"Table_{idx + 1}"
                     # Excel sheet names capped at 31 chars
-                    df.to_excel(writer, sheet_name=sheet_name[:30], index=False)
+                    df.to_excel(sheet_name=sheet_name[:30], excel_writer=writer, index=False, header=False)
+
+                # Post-format workbook for cleaner CloudConvert-like readability.
+                self._postformat_xlsx(writer.book)
         else:
             # CSV - Merge all extracted tables and save
-            merged = pd.concat(tables_df, ignore_index=True) if len(tables_df) > 1 else tables_df[0]
+            merged = (
+                pd.concat(normalized_tables, ignore_index=True)
+                if len(normalized_tables) > 1
+                else normalized_tables[0]
+            )
             merged.to_csv(output_path, index=False)
 
         logger.info(f"Spreadsheet saved successfully to {output_path}")
         return output_path
+
+    def _normalize_extracted_table(self, df):
+        import pandas as pd
+
+        cleaned = df.copy()
+
+        def _clean_cell(v):
+            if v is None:
+                return ""
+            s = str(v)
+            s = s.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+            s = re.sub(r"\s+", " ", s).strip()
+            return s
+
+        cleaned = cleaned.map(_clean_cell)
+
+        # Drop fully empty rows/cols.
+        cleaned = cleaned.replace("", pd.NA)
+        cleaned = cleaned.dropna(axis=0, how="all").dropna(axis=1, how="all")
+        cleaned = cleaned.fillna("")
+
+        if cleaned.empty:
+            return df
+
+        # Remove synthetic numeric header rows (e.g., 0,1,2,3,4) produced by dataframe defaults.
+        first_row = [str(v).strip() for v in cleaned.iloc[0].tolist()]
+        if first_row and all(v.isdigit() for v in first_row):
+            numeric = [int(v) for v in first_row]
+            if numeric == list(range(len(numeric))):
+                cleaned = cleaned.iloc[1:].reset_index(drop=True)
+
+        # If many sparse columns exist, compact to first 1-2 meaningful cells per row.
+        if cleaned.shape[1] > 2:
+            rows = []
+            for _, row in cleaned.iterrows():
+                vals = [str(v).strip() for v in row.tolist() if str(v).strip()]
+                if not vals:
+                    continue
+                if len(vals) == 1:
+                    rows.append([vals[0], ""])
+                else:
+                    rows.append([vals[0], vals[1]])
+            if rows:
+                cleaned = pd.DataFrame(rows, columns=["A", "B"])
+
+        # Parse common date/datetime strings so Excel stores real date values.
+        if cleaned.shape[1] >= 2:
+            key_col = cleaned.columns[0]
+            val_col = cleaned.columns[1]
+            parsed_vals = []
+            for k, v in zip(cleaned[key_col].tolist(), cleaned[val_col].tolist()):
+                key = str(k).upper()
+                val = str(v).strip()
+                parsed = self._try_parse_excel_datetime(val)
+                if parsed and ("DATE" in key or "BIRTH" in key or "VERIFIED" in key):
+                    parsed_vals.append(parsed)
+                else:
+                    parsed_vals.append(v)
+            cleaned[val_col] = parsed_vals
+
+        return cleaned.reset_index(drop=True)
+
+    def _try_parse_excel_datetime(self, value: str):
+        if not value:
+            return None
+        for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%d/%m/%Y %H:%M:%S", "%d-%m-%Y %H:%M:%S"):
+            try:
+                return datetime.strptime(value, fmt)
+            except Exception:
+                continue
+        return None
+
+    def _postformat_xlsx(self, workbook):
+        from openpyxl.styles import Alignment, Font
+
+        for ws in workbook.worksheets:
+            # Basic width and alignment polish.
+            ws.column_dimensions["A"].width = 32
+            ws.column_dimensions["B"].width = 26
+            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=2):
+                for cell in row:
+                    cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+            # Merge single-value title rows across A:B (similar to cloud converter outputs).
+            for r in range(1, ws.max_row + 1):
+                a = ws.cell(r, 1).value
+                b = ws.cell(r, 2).value
+                if a and (b is None or str(b).strip() == "") and str(a).strip():
+                    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
+                    ws.cell(r, 1).font = Font(bold=True)
+
+            # Emphasize first key/value rows.
+            for r in range(1, min(ws.max_row, 10) + 1):
+                key = ws.cell(r, 1).value
+                if isinstance(key, str) and key.strip().isupper():
+                    ws.cell(r, 1).font = Font(bold=True)
 
     def _to_txt(self, pdf_path: Path, output_path: Path) -> Path:
         """
@@ -459,15 +570,31 @@ class PDFHandler(BaseHandler):
 
     def _to_html(self, pdf_path: Path, output_path: Path) -> Path:
         """
-        Generates layout-friendly text representation wrapped inside modern responsive HTML.
+        Generates high-fidelity HTML, preferring layout-preserving engines first:
+        1) pdf2htmlEX
+        2) poppler pdftohtml (single-file, CSS-driven)
+        3) text fallback template
         """
+        # 1) Best fidelity: pdf2htmlEX (very close to CloudConvert style output)
+        if self._try_pdf2htmlex(pdf_path, output_path):
+            return output_path
+
+        # 2) Good fallback: poppler's pdftohtml with embedded CSS and no frame split
+        if self._try_pdftohtml(pdf_path, output_path):
+            return output_path
+
+        # 3) Last fallback: semantic text extraction template
         html_blocks = []
         with pdfplumber.open(pdf_path) as pdf:
             for idx, page in enumerate(pdf.pages):
                 page_text = page.extract_text()
                 if page_text:
                     paragraphs = page_text.split("\n")
-                    formatted = "".join(f"<p style='margin-bottom:12px;'>{p}</p>" for p in paragraphs if p.strip())
+                    formatted = "".join(
+                        f"<p style='margin-bottom:12px;'>{html.escape(p)}</p>"
+                        for p in paragraphs
+                        if p.strip()
+                    )
                     html_blocks.append(f"<div class='page' style='margin: 40px auto; padding: 20px; border: 1px solid #ccc; max-width: 800px; background:#fff;'><h2>Page {idx + 1}</h2>{formatted}</div>")
 
         body_content = "\n".join(html_blocks)
@@ -488,6 +615,53 @@ class PDFHandler(BaseHandler):
 """
         output_path.write_text(html_template, encoding="utf-8")
         return output_path
+
+    def _try_pdf2htmlex(self, pdf_path: Path, output_path: Path) -> bool:
+        try:
+            self.run_subprocess(
+                [
+                    "pdf2htmlEX",
+                    "--embed",
+                    "cfijo",
+                    "--dest-dir",
+                    str(output_path.parent),
+                    str(pdf_path),
+                    output_path.name,
+                ],
+                timeout=180,
+            )
+            return output_path.exists() and output_path.stat().st_size > 0
+        except Exception as e:
+            logger.info(f"pdf2htmlEX unavailable/failed, trying pdftohtml fallback: {e}")
+            return False
+
+    def _try_pdftohtml(self, pdf_path: Path, output_path: Path) -> bool:
+        try:
+            # pdftohtml writes to <prefix>.html, so pass path without suffix as prefix.
+            prefix = output_path.with_suffix("")
+            self.run_subprocess(
+                [
+                    "pdftohtml",
+                    "-s",          # single HTML file
+                    "-c",          # complex output (positioned text)
+                    "-hidden",     # include hidden text (better fidelity/searchability)
+                    "-noframes",   # no frame split
+                    "-enc",
+                    "UTF-8",
+                    str(pdf_path),
+                    str(prefix),
+                ],
+                timeout=120,
+            )
+            produced = prefix.with_suffix(".html")
+            if produced.exists() and produced.stat().st_size > 0:
+                if produced != output_path:
+                    shutil.move(str(produced), str(output_path))
+                return True
+            return False
+        except Exception as e:
+            logger.info(f"pdftohtml unavailable/failed, falling back to text-template HTML: {e}")
+            return False
 
     def _to_zip(self, pdf_path: Path, output_path: Path, quality: str = "fast") -> Path:
         """
