@@ -1,15 +1,5 @@
 services:
   - type: web
-    name: gotenberg
-    runtime: image
-    image:
-      url: gotenberg/gotenberg:8
-    plan: free
-    ports:
-      - port: 3000
-    healthCheckPath: /health
-
-  - type: web
     name: backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
@@ -24,7 +14,7 @@ services:
           name: redis
           property: connectionString
       - key: GOTENBERG_URL
-        value: http://gotenberg:3000
+        value: https://sougandhhhhh-converto-gotenberg.hf.space
       - key: UPLOAD_DIR
         value: /tmp/converto/uploads
       - key: OUTPUT_DIR

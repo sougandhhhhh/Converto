@@ -48,7 +48,8 @@ Convert anything, to anything. **Next.js 16** + **FastAPI** powered platform sup
 **🏗️ Infrastructure**
 - [Docker Compose](https://docs.docker.com/compose/) — local development (Redis, backend, worker, Gotenberg)
 - [Cloudflare R2 / AWS S3](https://aws.amazon.com/s3/) — optional file storage for large uploads
-- [Render](https://render.com/) — production backend hosting
+- [Render](https://render.com/) — production backend hosting (FastAPI, Celery, Redis)
+- [Hugging Face Spaces](https://huggingface.co/) — Gotenberg PDF engine
 
 ---
 
@@ -156,7 +157,7 @@ Converto is designed for **[Vercel](https://vercel.com/)** (frontend) + **[Rende
 | 🌐 Frontend (Next.js) | Vercel | — |
 | 🐍 Backend API (FastAPI) | Render | `backend` |
 | 🔄 Celery Worker | Render | `worker` |
-| 📄 PDF Engine (Gotenberg) | Render | `gotenberg` |
+| 📄 PDF Engine (Gotenberg) | [Hugging Face Spaces](https://huggingface.co/spaces/sougandhhhhh/converto-gotenberg) | Docker Space |
 | 📦 Redis | Render | `redis` |
 
 Deploy via `render.yaml` Blueprint or the Render dashboard.
