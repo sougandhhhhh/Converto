@@ -105,15 +105,7 @@ export default function HomePage() {
       {/* ── HERO SECTION ── */}
       <section className="relative px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center max-w-7xl mx-auto flex flex-col items-center">
         
-        {/* Animated Badge */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-300 text-xs font-semibold select-none mb-6 shadow-sm shadow-indigo-500/5"
-        >
-          <Zap size={13} className="animate-pulse" /> Student-Focused File Conversion Platform
-        </motion.div>
+        {/* Removed badge */}
 
         {/* Hero Title */}
         <motion.h1 
