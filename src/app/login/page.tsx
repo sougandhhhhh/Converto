@@ -58,7 +58,7 @@ export default function LoginPage() {
           {/* Header branding */}
           <div className="text-center mb-8">
             <Link href="/" className="text-2xl font-black tracking-tight select-none">
-              <span className="text-foreground">Conver</span><span className="gradient-brand-text">to</span>
+              <span className="text-foreground">Conver<span className="gradient-brand-text">to</span></span>
             </Link>
             <h1 className="text-lg font-bold text-foreground mt-4">
               {isLogin ? "Welcome back to Converto" : "Create your student account"}

@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 32px", height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             {/* Logo left */}
             <Link href="/" style={{ textDecoration: "none", fontSize: "18px", fontWeight: 800, letterSpacing: "-0.02em" }}>
-              <span style={{ color: textPrim }}>Conver</span><span className="gradient-text">to</span>
+              <span style={{ color: textPrim }}>Conver<span className="gradient-text">to</span></span>
             </Link>
 
             {/* Right actions */}

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Compass, FileText, FileSpreadsheet, Presentation, FileImage, FileCode, ArrowRight } from "lucide-react";
+import { Search, Compass, FileText, FileSpreadsheet, Presentation, FileImage, FileCode, ArrowRight, ArrowLeft } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,6 +77,9 @@ export default function ToolsPage() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Block */}
         <div className="text-center max-w-2xl mx-auto mb-12">
+          <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6 mx-auto cursor-pointer">
+            <ArrowLeft size={14} /> Back
+          </button>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mb-4">
             Browse All <span className="gradient-brand-text">Conversion</span> Tools
           </h1>
