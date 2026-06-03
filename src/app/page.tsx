@@ -93,140 +93,141 @@ export default function HomePage() {
   const activeConfig = FORMAT_CONFIG.find(f => f.id === activeFormat);
 
   return (
-    <div className="flex flex-col min-h-screen relative bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
       
+      {/* Background Decorative Glow Panels */}
+      <div className="absolute top-[-10%] left-[10%] w-[50vw] h-[50vw] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="absolute bottom-[20%] right-[-10%] w-[45vw] h-[45vw] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+
       {/* Global Navbar */}
       <Navbar />
 
       {/* ── HERO SECTION ── */}
-      <section className="positivus-container pt-[70px] max-sm:pt-[40px] mt-[70px] max-sm:mt-[40px]">
-        <div className="flex items-center max-md:flex-col justify-between gap-[20px] py-0 relative w-full">
-          <div className="flex flex-col gap-[35px] max-xl:gap-[25px] items-start relative shrink-0 flex-1 pb-[34px] max-md:pb-0 max-w-[531px] max-md:max-w-none">
-            
-            {/* Hero Title */}
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="font-medium relative shrink-0 text-[60px]/[normal] max-xl:text-[48px]/[1] whitespace-pre-wrap"
-            >
-              Convert Any File{"\n"}<span className="text-[#b9ff66] dark:text-[#b9ff66]">Instantly</span>
-            </motion.h1>
+      <section className="relative px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center max-w-7xl mx-auto flex flex-col items-center">
+        
+        {/* Animated Badge */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-300 text-xs font-semibold select-none mb-6 shadow-sm shadow-indigo-500/5"
+        >
+          <Zap size={13} className="animate-pulse" /> Student-Focused File Conversion Platform
+        </motion.div>
 
-            {/* Hero Description */}
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="font-normal relative shrink-0 text-[20px]/[28px] max-xl:text-[16px]/[24px] max-w-[498px] max-md:max-w-none whitespace-pre-wrap text-muted-foreground"
-            >
-              PDF, Word, Excel, PowerPoint, images — convert between 68+ formats with zero quality loss. Built for students, trusted by professionals.
-            </motion.p>
+        {/* Hero Title */}
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-none mb-6 max-w-4xl"
+        >
+          Convert Any File <span className="gradient-brand-text">Instantly</span>
+        </motion.h1>
 
-            {/* Action Button */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <button
-                onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
-                className="positivus-btn-primary"
-              >
-                Start Converting
-              </button>
-            </motion.div>
+        {/* Hero Description */}
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10"
+        >
+          PDF, Word, Excel, PowerPoint, images &mdash; convert between 68+ formats with zero quality loss. Built for students, trusted by professionals.
+        </motion.p>
 
-            {/* Statistics Panels */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.45 }}
-              className="positivus-card rounded-[30px] p-8 grid grid-cols-2 gap-6"
-            >
-              {[
-                { value: "68+", label: "Formats" },
-                { value: "100%", label: "Free" },
-                { value: "Unlimited", label: "Daily" },
-                { value: "Zero", label: "Retention" }
-              ].map((stat, i) => (
-                <div key={i} className="text-center">
-                  <div className="text-3xl font-bold text-foreground">{stat.value}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
-                </div>
-              ))}
-            </motion.div>
-          </div>
+        {/* Action Buttons */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45 }}
+          className="flex justify-center w-full mb-16"
+        >
+          <button
+            onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
+            className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-foreground text-background font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/10"
+          >
+            Start Converting <ArrowRight size={16} />
+          </button>
+        </motion.div>
 
-          {/* Hero Illustration Area */}
-          <div className="relative shrink-0 flex-1 max-md:hidden flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="w-full max-w-[600px] aspect-square positivus-card-green rounded-[30px] flex items-center justify-center"
-            >
-              <div className="text-center p-8">
-                <FileText size={120} className="mx-auto mb-4 text-[#191a23]" />
-                <p className="text-[#191a23] text-2xl font-bold">Drag & Drop Files</p>
-                <p className="text-[#191a23]/70 text-lg mt-2">or click to browse</p>
-              </div>
-            </motion.div>
-          </div>
-        </div>
+        {/* Statistics Panels */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl p-6 rounded-3xl glassmorphism glass-card border-border/40"
+        >
+          {[
+            { value: "68+", label: "Conversion Formats" },
+            { value: "100%", label: "Free to Use" },
+            { value: "Unlimited", label: "Daily Conversions" },
+            { value: "Zero", label: "File Retention" }
+          ].map((stat, i) => (
+            <div key={i} className="text-center p-4">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">{stat.label}</div>
+            </div>
+          ))}
+        </motion.div>
+
       </section>
 
       {/* ── FORMAT PICKER SECTION ── */}
-      <section id="formats" className="positivus-container mt-[140px] max-lg:mt-[100px] max-sm:mt-[60px] scroll-margin-top-[40px]">
+      <section id="formats" className="px-4 sm:px-6 lg:px-8 py-20 border-t border-border/20 max-w-7xl mx-auto w-full scroll-margin-top-[64px]">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-4xl font-bold text-foreground mb-4">Pick Your Source Format</h2>
-          <p className="text-muted-foreground text-lg">Select a source document or media type below to view available targets.</p>
+          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Supported Formats</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Pick Your Source Format</h2>
+          <p className="text-muted-foreground sm:text-lg">Select a source document or media type below to view available targets.</p>
         </div>
 
         {/* Formats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[40px] max-xl:gap-[30px] max-lg:grid-cols-1">
-          {FORMAT_CONFIG.map((fmt, index) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {FORMAT_CONFIG.map((fmt) => {
             const Icon = fmt.icon;
-            const isGreen = index % 3 === 0;
-            const isDark = index % 3 === 1;
             return (
               <motion.button
                 whileHover={{ y: -4 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 key={fmt.id}
                 onClick={() => setActiveFormat(fmt.id)}
-                className={`group relative flex flex-col items-start p-8 rounded-[30px] border text-left cursor-pointer transition-all duration-200 select-none overflow-hidden ${
-                  isGreen 
-                    ? 'positivus-card-green text-[#191a23]' 
-                    : isDark 
-                    ? 'positivus-card-dark' 
-                    : 'positivus-card'
-                }`}
+                className="group relative flex flex-col items-start p-6 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/20 hover:shadow-xl hover:shadow-indigo-500/[0.02] text-left cursor-pointer transition-all duration-200 select-none overflow-hidden"
               >
+                {/* Glow Accent behind icon on hover */}
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
+                  style={{
+                    background: `radial-gradient(circle at 10% 20%, ${fmt.glow} 0%, transparent 60%)`
+                  }}
+                />
+
                 {/* Icon wrapper */}
                 <div 
-                  className="flex items-center justify-center w-16 h-16 rounded-2xl mb-6 bg-white/10"
+                  className="flex items-center justify-center w-12 h-12 rounded-xl border mb-6 transition-all duration-300"
+                  style={{
+                    borderColor: `${fmt.accent}30`,
+                    backgroundColor: `${fmt.accent}10`,
+                  }}
                 >
-                  <Icon size={32} className={isGreen || isDark ? "text-[#191a23]" : "text-foreground"} />
+                  <Icon size={20} style={{ color: fmt.accent }} />
                 </div>
 
                 {/* Info */}
                 <div className="w-full flex items-end justify-between mt-auto">
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">{fmt.name}</h3>
-                    <p className="text-sm opacity-70">
+                    <h3 className="text-xl font-bold tracking-tight text-foreground mb-1">{fmt.name}</h3>
+                    <p className="text-xs text-muted-foreground font-medium">
                       {SUB_BUTTONS[fmt.id]?.length ?? 0} targets available
                     </p>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/20">
-                    <ChevronRight size={20} />
+                  <div className="p-1.5 rounded-lg bg-secondary text-muted-foreground group-hover:text-foreground transition-colors duration-200">
+                    <ChevronRight size={15} />
                   </div>
                 </div>
 
                 {/* Most Popular Badge */}
                 {fmt.badge && (
-                  <span className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold">
-                    <Star size={10} className="fill-current" /> {fmt.badge}
+                  <span className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/20 text-[10px] font-bold text-indigo-400 select-none">
+                    <Star size={8} className="fill-current" /> {fmt.badge}
                   </span>
                 )}
               </motion.button>
@@ -236,38 +237,37 @@ export default function HomePage() {
       </section>
 
       {/* ── BENTO GRID FEATURES ── */}
-      <section className="positivus-container mt-[140px] max-lg:mt-[100px] max-sm:mt-[60px]">
+      <section className="px-4 sm:px-6 lg:px-8 py-20 border-t border-border/20 bg-secondary/20 dark:bg-transparent max-w-7xl mx-auto w-full">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-4xl font-bold text-foreground mb-4">Enterprise Performance. Free of Cost.</h2>
-          <p className="text-muted-foreground text-lg">Lightning speed, multi-format pipelines, and secure cloud transit.</p>
+          <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">Engineered for Students</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mt-3 mb-4">Enterprise Performance. Free of Cost.</h2>
+          <p className="text-muted-foreground sm:text-lg">Lightning speed, multi-format pipelines, and secure cloud transit.</p>
         </div>
 
         {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-[40px] max-xl:gap-[30px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Card 1: Speed */}
-          <div className={`flex flex-col justify-between p-8 rounded-[30px] border transition-all duration-300 ${
-            true ? 'positivus-card-green text-[#191a23]' : 'positivus-card'
-          }`}>
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 mb-6">
-                <Zap size={32} />
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 mb-6">
+                <Zap size={20} />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Sub-Second Processing</h3>
-              <p className="text-sm leading-relaxed opacity-70">
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Sub-Second Processing</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Powered by cluster-scaled LibreOffice containers. Conversions complete in under 3 seconds.
               </p>
             </div>
-            <span className="mt-8 text-xs font-bold opacity-60">Average conversion speed: 1.8s</span>
+            <span className="mt-8 text-xs font-bold text-muted-foreground">Average conversion speed: 1.8s</span>
           </div>
 
           {/* Card 2: 68+ Formats */}
-          <div className="flex flex-col justify-between p-8 rounded-[30px] border positivus-card transition-all duration-300">
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 mb-6">
-                <Layers size={32} />
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 mb-6">
+                <Layers size={20} />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Multi-Format Pipeline</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Multi-Format Pipeline</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Convert between standard PDFs, document sheets, slideshows, vectors, and web pages without formatting shifts.
               </p>
             </div>
@@ -277,17 +277,17 @@ export default function HomePage() {
           </div>
 
           {/* Card 3: Secure Cloud Transit */}
-          <div className="flex flex-col justify-between p-8 rounded-[30px] border positivus-card-dark transition-all duration-300">
+          <div className="flex flex-col justify-between p-8 rounded-3xl border border-border/40 bg-card/60 backdrop-blur-sm hover:border-foreground/10 hover:shadow-lg transition-all duration-300">
             <div>
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 mb-6">
-                <ShieldCheck size={32} />
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-500 mb-6">
+                <ShieldCheck size={20} />
               </div>
-              <h3 className="text-2xl font-bold mb-3">Encrypted Cloud Transit</h3>
-              <p className="text-sm leading-relaxed opacity-70">
+              <h3 className="text-2xl font-bold tracking-tight text-foreground mb-3">Encrypted Cloud Transit</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 All transport links utilize 256-bit SSL encryption. We coordinate with AWS S3 using presigned URLs to keep files insulated from other server threads during upload transactions.
               </p>
             </div>
-            <div className="mt-8 flex items-center gap-4 text-xs font-semibold opacity-60">
+            <div className="mt-8 flex items-center gap-4 text-xs font-semibold text-muted-foreground">
               <span>SSL/TLS Enforced</span>
               <span>•</span>
               <span>AES-256 Client-Side</span>
@@ -297,7 +297,7 @@ export default function HomePage() {
       </section>
 
       {/* Global Footer */}
-      <Footer className="mt-[140px] max-lg:mt-[100px] max-sm:mt-[60px]" />
+      <Footer />
 
       {/* ── MODALS (FAQ & FORMAT SPECIFICS) ── */}
       <AnimatePresence>
@@ -316,37 +316,41 @@ export default function HomePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className="relative w-full max-w-2xl bg-card border border-border rounded-[30px] p-8 sm:p-10 max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col justify-between"
+              className="relative w-full max-w-2xl bg-card border border-border/80 rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col justify-between"
             >
               <div>
                 <button 
                   onClick={() => setActiveFormat(null)}
-                  className="absolute top-6 right-6 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
+                  className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-all focus:outline-none touch-target"
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
 
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                   <div 
-                    className="flex items-center justify-center w-16 h-16 rounded-2xl border positivus-card-green"
+                    className="flex items-center justify-center w-12 h-12 rounded-xl border"
+                    style={{
+                      borderColor: `${activeConfig.accent}30`,
+                      backgroundColor: `${activeConfig.accent}12`
+                    }}
                   >
-                    <activeConfig.icon size={32} className="text-[#191a23]" />
+                    <activeConfig.icon size={20} style={{ color: activeConfig.accent }} />
                   </div>
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">
+                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                       Convert from {activeFormat.toUpperCase()}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Select target format to launch converter
                     </p>
                   </div>
                 </div>
 
-                <div className="h-px bg-border my-6" />
+                <div className="h-px bg-border/40 my-6" />
 
                 {/* Target Options Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {SUB_BUTTONS[activeFormat]?.map((sub) => {
                     const [, toFmt] = sub.label.split("→").map(s => s.trim());
                     return (
@@ -356,14 +360,19 @@ export default function HomePage() {
                           setActiveFormat(null);
                           router.push(`/convert/${sub.slug}`);
                         }}
-                        className="group flex flex-col items-center justify-center p-6 rounded-[20px] border positivus-card hover:positivus-card-green hover:text-[#191a23] text-center cursor-pointer transition-all duration-200"
+                        className="group flex flex-col items-center justify-center p-4 rounded-xl border border-border/40 bg-secondary/20 hover:bg-indigo-500/10 hover:border-indigo-500/30 text-center cursor-pointer transition-all duration-150"
                       >
                         <div 
-                          className="text-xs font-bold px-3 py-1 rounded bg-white/20 mb-3 transition-all duration-200"
+                          className="text-[10px] font-bold px-2 py-0.5 rounded border mb-2 transition-all duration-150"
+                          style={{
+                            borderColor: `${activeConfig.accent}30`,
+                            backgroundColor: `${activeConfig.accent}15`,
+                            color: activeConfig.accent
+                          }}
                         >
                           {toFmt}
                         </div>
-                        <span className="text-sm font-semibold text-foreground group-hover:text-[#191a23] transition-colors">
+                        <span className="text-xs font-semibold text-foreground group-hover:text-indigo-400 transition-colors">
                           {sub.label}
                         </span>
                       </button>

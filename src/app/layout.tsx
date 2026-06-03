@@ -21,6 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://converto2026.vercel.app"),
   title: "Converto",
   description: "Transform your documents with zero fidelity loss. Convert PDFs, images, spreadsheets, and more.",
   icons: {
