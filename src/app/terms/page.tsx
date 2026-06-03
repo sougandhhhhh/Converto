@@ -111,8 +111,8 @@ export default function TermsPage() {
                 {isDark ? <Sun size={15} /> : <Moon size={15} />}
                 {isDark ? "Light" : "Dark"}
               </button>
-              <Link href="/" className="nav-btn" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${border}`, color: textMute, textDecoration: "none", fontSize: "13px", fontWeight: 500 }}>
-                <ArrowLeft size={14} /> Back
+              <Link href="/" className="nav-btn" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 18px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${border}`, color: textMute, textDecoration: "none", fontSize: "17px", fontWeight: 500, marginLeft: "-30px" }}>
+                <ArrowLeft size={18} /> Back
               </Link>
             </div>
           </div>
