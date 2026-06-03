@@ -25,6 +25,9 @@ export default function PrivacyPage() {
         body { font-family: 'Inter', sans-serif !important; background: ${bg} !important; transition: background 0.3s ease; }
         .gradient-text { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         ::-webkit-scrollbar { width: 6.5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); border-radius: 4px; }
+        .nav-btn { transition: all 0.2s ease !important; }
+        .nav-btn:hover { box-shadow: 0 4px 14px rgba(99,102,241,0.25) !important; transform: translateY(-1px) !important; }
+        .nav-btn:active { transform: scale(0.95) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
       `}</style>
 
       <div style={{ background: bg, minHeight: "100vh", display: "flex", flexDirection: "column", color: textMid, transition: "background 0.3s ease" }}>
@@ -42,13 +45,14 @@ export default function PrivacyPage() {
               {/* Visible theme toggle */}
               <button
                 onClick={toggleTheme}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: btnBg, border: `1px solid ${btnBorder}`, color: textMid, cursor: "pointer", fontSize: "13px", fontWeight: 500, transition: "all 0.2s" }}
+                className="nav-btn"
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: btnBg, border: `1px solid ${btnBorder}`, color: textMid, cursor: "pointer", fontSize: "13px", fontWeight: 500 }}
                 aria-label="Toggle theme"
               >
                 {isDark ? <Sun size={15} /> : <Moon size={15} />}
                 {isDark ? "Light" : "Dark"}
               </button>
-              <Link href="/" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${border}`, color: textMute, textDecoration: "none", fontSize: "13px", fontWeight: 500 }}>
+              <Link href="/" className="nav-btn" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${border}`, color: textMute, textDecoration: "none", fontSize: "13px", fontWeight: 500 }}>
                 <ArrowLeft size={14} /> Back
               </Link>
             </div>
