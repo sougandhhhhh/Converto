@@ -32,8 +32,7 @@ export default function Footer() {
           <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight select-none mb-3">
               <img src="/logo.svg" alt="Converto" className="h-6 w-6" />
-              <span className="text-foreground">Conver</span>
-              <span className="gradient-brand-text">to</span>
+              <span className="text-foreground">Conver</span><span className="gradient-brand-text">to</span>
             </Link>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-[180px]">
               Precision document conversion with zero quality loss. Secure, instant, student-friendly.
