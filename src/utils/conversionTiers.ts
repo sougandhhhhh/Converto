@@ -8,14 +8,13 @@ export interface TierInfo {
   cons: string[];
 }
 
-const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".avif"];
 const TEXT_EXTS = [".txt", ".html", ".csv", ".json", ".xml"];
-
 export function getConversionMode(from: string, to: string): ConversionMode {
   const f = from.toLowerCase();
   const t = to.toLowerCase();
 
-  // Image ↔ Image
+  // Image ↔ Image (any image format)
   if (IMAGE_EXTS.includes(f) && IMAGE_EXTS.includes(t)) return "client";
   // Image → PDF
   if (IMAGE_EXTS.includes(f) && t === ".pdf") return "client";
@@ -29,6 +28,8 @@ export function getConversionMode(from: string, to: string): ConversionMode {
   if (["csv", ".csv", ".json", ".xml", ".html"].includes(f) && TEXT_EXTS.includes(t)) return "client";
   // HTML → PDF
   if (f === ".html" && t === ".pdf") return "client";
+  // MD → HTML, PDF, TXT
+  if (f === ".md" && [".html", ".pdf", ".txt"].includes(t)) return "client";
 
   return "server";
 }

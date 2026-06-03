@@ -8,6 +8,8 @@ const EXT_TO_MIME: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".gif": "image/gif",
+  ".heic": "image/heic",
+  ".avif": "image/avif",
   ".pdf": "application/pdf",
   ".txt": "text/plain",
   ".html": "text/html",
@@ -17,7 +19,16 @@ const EXT_TO_MIME: Record<string, string> = {
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
-async function imageToImage(file: File, targetExt: string): Promise<Blob> {
+const IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".avif"];
+
+async function decodeImageToCanvas(file: File): Promise<HTMLCanvasElement> {
+  const name = file.name.toLowerCase();
+  const isHeic = name.endsWith(".heic");
+
+  if (isHeic) {
+    return decodeHeicToCanvas(await file.arrayBuffer());
+  }
+
   const img = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
   canvas.width = img.width;
@@ -25,25 +36,127 @@ async function imageToImage(file: File, targetExt: string): Promise<Blob> {
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(img, 0, 0);
   img.close();
+  return canvas;
+}
 
-  const mime = EXT_TO_MIME[targetExt] || "image/png";
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error(`Failed to encode image as ${targetExt}`));
-    }, mime);
+async function decodeHeicToCanvas(buffer: ArrayBuffer): Promise<HTMLCanvasElement> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const libheifModule: any = await import("libheif-js/wasm-bundle");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const libheif: any = libheifModule.default || libheifModule;
+  const decoder = new libheif.HeifDecoder();
+  const images = decoder.decode(new Uint8Array(buffer));
+  if (!images || images.length === 0) {
+    throw new Error("No images found in HEIC file");
+  }
+  const image = images[0];
+  const width = image.get_width();
+  const height = image.get_height();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  const imageData = ctx.createImageData(width, height);
+
+  await new Promise<void>((resolve, reject) => {
+    image.display(
+      { data: imageData.data as any, width, height },
+      (displayData: unknown) => {
+        if (!displayData) {
+          reject(new Error("HEIF processing error"));
+          return;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve();
+      }
+    );
   });
+
+  image.free();
+  return canvas;
+}
+
+async function canvasToImageBlob(canvas: HTMLCanvasElement, ext: string): Promise<Blob> {
+  switch (ext) {
+    case ".jpg":
+    case ".jpeg":
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error("JPEG encode failed")), "image/jpeg", 0.92);
+      });
+    case ".png":
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error("PNG encode failed")), "image/png");
+      });
+    case ".webp":
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error("WEBP encode failed")), "image/webp", 0.92);
+      });
+    case ".gif":
+      return encodeGif(canvas);
+    case ".avif":
+      return encodeAvif(canvas);
+    default:
+      throw new Error(`Unsupported image format: ${ext}`);
+  }
+}
+
+async function encodeGif(canvas: HTMLCanvasElement): Promise<Blob> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const gifModule: any = await import("gif.js");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const GIFEncoder: any = (gifModule.default || gifModule).GIFEncoder;
+  const ctx = canvas.getContext("2d")!;
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = new Uint8Array(canvas.width * canvas.height * 3);
+  for (let i = 0; i < canvas.width * canvas.height; i++) {
+    pixels[i * 3] = imageData.data[i * 4];
+    pixels[i * 3 + 1] = imageData.data[i * 4 + 1];
+    pixels[i * 3 + 2] = imageData.data[i * 4 + 2];
+  }
+
+  const encoder = new GIFEncoder(canvas.width, canvas.height);
+  encoder.setRepeat(-1);
+  encoder.setDelay(100);
+  encoder.setQuality(10);
+  encoder.addFrame(pixels);
+  encoder.finish();
+
+  const stream = encoder.stream();
+  const { pages, cursor } = stream;
+  const result = new Uint8Array(cursor);
+  let offset = 0;
+  for (const page of pages) {
+    const len = Math.min(page.length, cursor - offset);
+    if (len <= 0) break;
+    result.set(page.subarray(0, len), offset);
+    offset += len;
+  }
+  return new Blob([result], { type: "image/gif" });
+}
+
+async function encodeAvif(canvas: HTMLCanvasElement): Promise<Blob> {
+  const pngBlob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/png")
+  );
+  const pngBytes = new Uint8Array(await pngBlob.arrayBuffer());
+
+  const avif = await import("avif-wasm");
+  await avif.init();
+  const options = new avif.ConversionOptions(60, 80, avif.Subsampling.YUV444, false);
+  const avifData = await avif.encode(pngBytes, options, () => {});
+  const fixed = new Uint8Array(avifData.byteLength);
+  fixed.set(avifData);
+  return new Blob([fixed], { type: "image/avif" });
+}
+
+async function imageToImage(file: File, targetExt: string): Promise<Blob> {
+  const canvas = await decodeImageToCanvas(file);
+  return canvasToImageBlob(canvas, targetExt);
 }
 
 async function imageToPdf(file: File): Promise<Blob> {
-  const img = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0);
-  img.close();
-
+  const canvas = await decodeImageToCanvas(file);
   const pngBlob = await new Promise<Blob>((resolve) =>
     canvas.toBlob((b) => resolve(b!), "image/png")
   );
@@ -113,8 +226,7 @@ async function txtToFormat(text: string, targetExt: string): Promise<Blob> {
     case ".json":
       content = JSON.stringify(
         text.split("\n").filter((l) => l.trim()).map((l) => ({ line: l })),
-        null,
-        2
+        null, 2
       );
       break;
     case ".xml":
@@ -268,6 +380,38 @@ async function textToText(file: File, fromExt: string, toExt: string): Promise<B
   return new Blob([result], { type: mime });
 }
 
+async function mdToHtml(md: string): Promise<string> {
+  const { marked } = await import("marked");
+  return marked.parse(md) as Promise<string>;
+}
+
+async function mdToTxt(md: string): Promise<string> {
+  const html = await mdToHtml(md);
+  return html.replace(/<[^>]*>/g, "").replace(/&[^;]+;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function mdToFormat(file: File, targetExt: string): Promise<Blob> {
+  const md = await file.text();
+  const mime = EXT_TO_MIME[targetExt] || "text/plain";
+
+  switch (targetExt) {
+    case ".html": {
+      const html = await mdToHtml(md);
+      return new Blob([html], { type: mime });
+    }
+    case ".txt": {
+      const txt = await mdToTxt(md);
+      return new Blob([txt], { type: mime });
+    }
+    case ".pdf": {
+      const html = await mdToHtml(md);
+      return htmlToPdf(html);
+    }
+    default:
+      throw new Error(`Unsupported target format for MD: ${targetExt}`);
+  }
+}
+
 export interface ClientConvertResult {
   blob: Blob;
   fileName: string;
@@ -277,14 +421,12 @@ export async function clientConvert(file: File, from: string, to: string): Promi
   const f = from.toLowerCase();
   const t = to.toLowerCase();
 
-  const imageExts = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-
-  if (imageExts.includes(f) && imageExts.includes(t)) {
+  if (IMAGE_EXTS.includes(f) && IMAGE_EXTS.includes(t)) {
     const blob = await imageToImage(file, t);
     return { blob, fileName: file.name.replace(/\.[^/.]+$/, "") + t };
   }
 
-  if (imageExts.includes(f) && t === ".pdf") {
+  if (IMAGE_EXTS.includes(f) && t === ".pdf") {
     const blob = await imageToPdf(file);
     return { blob, fileName: file.name.replace(/\.[^/.]+$/, "") + ".pdf" };
   }
@@ -317,6 +459,11 @@ export async function clientConvert(file: File, from: string, to: string): Promi
 
   if ([".csv", ".json", ".xml"].includes(f) && [".csv", ".json", ".xml", ".html", ".txt"].includes(t)) {
     const blob = await textToText(file, f, t);
+    return { blob, fileName: file.name.replace(/\.[^/.]+$/, "") + t };
+  }
+
+  if (f === ".md" && [".html", ".pdf", ".txt"].includes(t)) {
+    const blob = await mdToFormat(file, t);
     return { blob, fileName: file.name.replace(/\.[^/.]+$/, "") + t };
   }
 

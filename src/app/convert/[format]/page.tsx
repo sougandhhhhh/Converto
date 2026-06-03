@@ -7,11 +7,10 @@ import {
   X, RefreshCw, CheckCircle2, AlertCircle,
   Plus, Download, Zap, Info, Monitor, Server
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useConvert, ConvertStatus, ConversionQuality } from "@/hooks/useConvert";
 import { useClientConvert } from "@/hooks/useClientConvert";
-import { useTheme } from "@/components/ThemeProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
@@ -102,9 +101,6 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
   const downloadUrl = mode === "client" ? clientUrl : serverUrl;
   const downloadName = mode === "client" ? clientName : serverName;
 
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-
   const doConvert = useCallback(() => {
     if (mode === "client") {
       convertClient(item.file, config.from, config.to);
@@ -114,9 +110,7 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
   }, [mode, item.file, config.from, config.to, quality, convertClient, convertServer]);
 
   useEffect(() => {
-    if (forceConvert && status === "idle") {
-      doConvert();
-    }
+    if (forceConvert && status === "idle") doConvert();
   }, [forceConvert, status, doConvert]);
 
   useEffect(() => {
@@ -158,63 +152,56 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className={`relative flex flex-col p-6 rounded-[20px] border transition-all duration-200 ${
+      className={`relative flex flex-col p-5 rounded-2xl border transition-all duration-200 ${
         status === 'done' 
-          ? 'positivus-card-green text-[#191a23]' 
+          ? 'border-emerald-500/30 bg-emerald-500/[0.02]' 
           : status === 'error' 
             ? 'border-rose-500/30 bg-rose-500/[0.02]' 
-            : 'positivus-card'
+            : 'border-border/40 bg-card/60'
       }`}
     >
-      {/* Progress bar track */}
       {isProcessing && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-secondary/30">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${Math.min(progress, 100)}%` }}
             className="h-full glow-box"
-            style={{
-              backgroundColor: accent,
-            }}
+            style={{ backgroundColor: accent }}
           />
         </div>
       )}
 
-      {/* Row content */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-        {/* Left Section: Icon + Description */}
         <div className="flex items-center gap-4 w-full sm:w-auto min-w-0">
           <div 
-            className={`flex items-center justify-center w-14 h-14 rounded-2xl border flex-shrink-0 transition-colors ${
-              status === 'done' 
-                ? 'bg-white/20' 
-                : status === 'error' 
-                ? 'bg-rose-500/20 border-rose-500/30' 
-                : 'bg-white/10'
-            }`}
+            className="flex items-center justify-center w-11 h-11 rounded-xl border flex-shrink-0 transition-colors"
+            style={{
+              borderColor: status === 'done' ? 'rgba(16,185,129,0.3)' : status === 'error' ? 'rgba(244,63,94,0.3)' : `${accent}30`,
+              backgroundColor: status === 'done' ? 'rgba(16,185,129,0.1)' : status === 'error' ? 'rgba(244,63,94,0.1)' : `${accent}10`,
+            }}
           >
             {isProcessing ? (
-              <RefreshCw size={24} className="text-foreground animate-spin" />
+              <RefreshCw size={18} style={{ color: accent }} className="animate-spin" />
             ) : status === 'done' ? (
-              <CheckCircle2 size={24} className="text-[#191a23]" />
+              <CheckCircle2 size={18} className="text-emerald-500" />
             ) : status === 'error' ? (
-              <AlertCircle size={24} className="text-rose-500" />
+              <AlertCircle size={18} className="text-rose-500" />
             ) : (
-              <FileText size={24} className="text-foreground" />
+              <FileText size={18} style={{ color: accent }} />
             )}
           </div>
 
           <div className="min-w-0 flex-1 sm:flex-initial">
-            <p className="text-base font-semibold text-foreground truncate max-w-[240px] sm:max-w-[320px]">
+            <p className="text-sm font-semibold text-foreground truncate max-w-[240px] sm:max-w-[320px]">
               {status === 'done' ? item.file.name.replace(config.from, config.to) : item.file.name}
             </p>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
               {isProcessing ? (
-                <span className="text-foreground">
-                  {mode === 'client' 
+                <span style={{ color: accent }}>
+                  {mode === 'client'
                     ? `Processing in browser... ${Math.min(progress, 100)}%`
-                    : status === 'uploading' 
-                      ? 'Uploading...' 
+                    : status === 'uploading'
+                      ? 'Uploading...'
                       : `Converting to ${config.to.toUpperCase().replace('.','')}... ${Math.min(progress, 100)}%`}
                 </span>
               ) : status === 'error' ? (
@@ -226,8 +213,7 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
           </div>
         </div>
 
-        {/* Right Section: Buttons */}
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-shrink-0">
           {status === "idle" && (
             <>
               <button
@@ -235,11 +221,15 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
                 className="touch-target p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
                 aria-label="Remove file"
               >
-                <X size={18} />
+                <X size={15} />
               </button>
               <button
                 onClick={doConvert}
-                className="px-6 py-3 rounded-[14px] text-sm font-bold positivus-btn-primary cursor-pointer transition-all"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-md cursor-pointer transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+                  boxShadow: `0 4px 12px ${accent}25`
+                }}
               >
                 Convert
               </button>
@@ -248,7 +238,12 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
 
           {isProcessing && (
             <span 
-              className="px-4 py-2 rounded-full text-xs font-bold border select-none positivus-card-green text-[#191a23]"
+              className="px-3 py-1 rounded-full text-[10px] font-bold border select-none"
+              style={{
+                borderColor: `${accent}30`,
+                backgroundColor: `${accent}10`,
+                color: accent
+              }}
             >
               {Math.min(progress, 100)}%
             </span>
@@ -260,16 +255,16 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
                 <>
                   <button
                     onClick={() => downloadAsFile(downloadUrl, downloadName || (item.file.name.replace(/\.[^/.]+$/, "") + config.to))}
-                    className="flex items-center gap-2 px-5 py-3 rounded-[14px] positivus-card-green text-[#191a23] text-sm font-bold hover:bg-white/20 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
                   >
-                    <Download size={16} /> {isArchiveOutput ? "Download ZIP" : "Download"}
+                    <Download size={13} /> {isArchiveOutput ? "Download ZIP" : "Download"}
                   </button>
                   {isImageTargetFlow && isArchiveOutput && (
                     <button
                       onClick={downloadAllImagesFromZip}
-                      className="flex items-center gap-2 px-5 py-3 rounded-[14px] positivus-card text-sm font-bold hover:bg-secondary transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all cursor-pointer"
                     >
-                      <Download size={16} /> Download All Images
+                      <Download size={13} /> Download All Images
                     </button>
                   )}
                 </>
@@ -283,11 +278,11 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
                 onClick={() => onRemove(item.id)}
                 className="touch-target p-2 rounded-xl text-muted-foreground hover:text-foreground transition-all cursor-pointer"
               >
-                <X size={18} />
+                <X size={15} />
               </button>
               <button
                 onClick={doConvert}
-                className="px-5 py-3 rounded-[14px] bg-rose-500/15 border border-rose-500/30 text-rose-500 text-sm font-bold hover:bg-rose-500/25 transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-500 text-xs font-bold hover:bg-rose-500/25 transition-all cursor-pointer"
               >
                 Retry
               </button>
@@ -301,7 +296,6 @@ function FileRow({ item, config, onRemove, forceConvert, quality, mode, onStatus
 
 export default function ConvertPage() {
   const params = useParams();
-  const router = useRouter();
   const formatSlug = (params.format as string) || "docx-to-pdf";
   const config = getConfigForSlug(formatSlug);
   const accent = config.accent ?? "#6366f1";
@@ -310,7 +304,6 @@ export default function ConvertPage() {
   const tierInfo = getTierInfo(config.from, config.to);
   const isClientCapable = defaultMode === "client";
 
-  const { theme } = useTheme();
   const maxUploadMb = getClientUploadLimitMb();
   const maxUploadBytes = Math.floor(maxUploadMb * 1024 * 1024);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -327,13 +320,8 @@ export default function ConvertPage() {
         prev[id]?.status === status &&
         prev[id]?.downloadUrl === downloadUrl &&
         prev[id]?.downloadName === downloadName
-      ) {
-        return prev;
-      }
-      return {
-        ...prev,
-        [id]: { status, downloadUrl, downloadName }
-      };
+      ) return prev;
+      return { ...prev, [id]: { status, downloadUrl, downloadName } };
     });
   }, []);
 
@@ -367,10 +355,7 @@ export default function ConvertPage() {
       setDropError(null);
       setFiles(prev => [
         ...prev,
-        ...acceptedFiles.map(file => ({
-          id: Math.random().toString(36).slice(7),
-          file
-        }))
+        ...acceptedFiles.map(file => ({ id: Math.random().toString(36).slice(7), file }))
       ]);
       setForceConvertAll(false);
     }
@@ -394,101 +379,105 @@ export default function ConvertPage() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen relative bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
       
-      {/* Global Navbar */}
       <Navbar />
 
-      {/* Main Container */}
-      <main className="flex-1 w-full positivus-container py-12">
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        {/* Back Link */}
         <Link 
           href="/" 
-          className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-8 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground mb-8 transition-colors"
         >
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={13} /> Back
         </Link>
 
-        {/* Heading Panel */}
-        <div className="flex flex-col gap-4 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl border flex-shrink-0 positivus-card-green">
-                <FileText size={32} className="text-[#191a23]" />
-              </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
-                  {config.title}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {mode === "client"
-                    ? "100% private — processed in your browser, files never leave your device."
-                    : "Convert your files securely with precision fallback mapping."}
-                </p>
-              </div>
+        {/* Heading + Mode controls */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center justify-center w-11 h-11 rounded-xl border flex-shrink-0"
+              style={{
+                borderColor: `${accent}30`,
+                backgroundColor: `${accent}10`,
+              }}
+            >
+              <FileText size={20} style={{ color: accent }} />
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Mode badge */}
-              <div
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
-                  mode === "client"
-                    ? "positivus-card-green text-[#191a23]"
-                    : "bg-blue-500/10 border-blue-500/30 text-blue-600"
-                }`}
-              >
-                {mode === "client" ? <Monitor size={14} /> : <Server size={14} />}
-                {mode === "client" ? "In your browser" : "On server"}
-              </div>
-              {/* Info button */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowInfo(!showInfo)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
-                  aria-label="Info about processing mode"
-                >
-                  <Info size={16} />
-                </button>
-                {showInfo && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowInfo(false)} />
-                    <div className="absolute right-0 top-full mt-2 z-50 w-80 p-4 rounded-[14px] border bg-card shadow-xl">
-                      <h4 className="text-sm font-bold mb-2">
-                        {mode === "client" ? "🖥️ Browser Processing" : "☁️ Server Processing"}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mb-3">{tierInfo.description}</p>
-                      <div className="space-y-1.5 mb-3">
-                        <p className="text-xs font-semibold text-emerald-600">Pros:</p>
-                        {tierInfo.pros.map((pro, i) => (
-                          <p key={i} className="text-xs text-muted-foreground pl-3">✓ {pro}</p>
-                        ))}
-                      </div>
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-semibold text-amber-600">Cons:</p>
-                        {tierInfo.cons.map((con, i) => (
-                          <p key={i} className="text-xs text-muted-foreground pl-3">△ {con}</p>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                {config.title}
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                {mode === "client"
+                  ? "100% private — processed in your browser, files never leave your device."
+                  : "Convert your files securely with precision fallback mapping."}
+              </p>
             </div>
           </div>
-          {/* Controls row */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {isClientCapable && (
-              <div className="inline-flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground font-medium">Process:</span>
+          <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+            {/* Mode badge + Info */}
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border ${
+                mode === "client"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              }`}
+            >
+              {mode === "client" ? <Monitor size={12} /> : <Server size={12} />}
+              {mode === "client" ? "In your browser" : "On server"}
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowInfo(!showInfo)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
+                aria-label="Info about processing mode"
+              >
+                <Info size={14} />
+              </button>
+              {showInfo && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowInfo(false)} />
+                  <div className="absolute right-0 top-full mt-2 z-50 w-80 p-4 rounded-2xl border bg-card shadow-xl">
+                    <h4 className="text-sm font-bold mb-2 text-foreground">
+                      {mode === "client" ? "Browser Processing" : "Server Processing"}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mb-3">{tierInfo.description}</p>
+                    <div className="space-y-1.5 mb-3">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Pros:</p>
+                      {tierInfo.pros.map((pro, i) => (
+                        <p key={i} className="text-xs text-muted-foreground pl-3">✓ {pro}</p>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Cons:</p>
+                      {tierInfo.cons.map((con, i) => (
+                        <p key={i} className="text-xs text-muted-foreground pl-3">△ {con}</p>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Controls row: Toggle + Quality */}
+        <div className="flex items-center gap-3 flex-wrap mb-8">
+          {isClientCapable && (
+            <div className="inline-flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-muted-foreground">Process:</span>
+              <div className="inline-flex rounded-xl border border-border/40 bg-card/60 p-1">
                 <button
                   type="button"
                   onClick={() => setMode("client")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === "client"
-                      ? "positivus-card-green text-[#191a23]"
-                      : "text-muted-foreground hover:text-foreground bg-secondary"
+                      ? "text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
+                  style={mode === "client" ? { background: `linear-gradient(135deg, ${accent}, ${accent}cc)` } : undefined}
                 >
                   In Browser
                 </button>
@@ -497,111 +486,125 @@ export default function ConvertPage() {
                   onClick={() => setMode("server")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === "server"
-                      ? "text-white bg-blue-600"
-                      : "text-muted-foreground hover:text-foreground bg-secondary"
+                      ? "text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
+                  style={mode === "server" ? { background: `linear-gradient(135deg, ${accent}, ${accent}cc)` } : undefined}
                 >
                   On Server
                 </button>
               </div>
-            )}
-            {mode === "server" && (
-              <div className="inline-flex items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">Quality</span>
-                <div className="inline-flex rounded-[14px] border border-border bg-card p-1">
-                  <button
-                    type="button"
-                    onClick={() => setQuality("fast")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      quality === "fast" ? "text-[#191a23]" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    style={quality === "fast" ? { background: "#b9ff66" } : undefined}
-                  >
-                    Fast
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuality("high")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      quality === "high" ? "text-[#191a23]" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    style={quality === "high" ? { background: "#b9ff66" } : undefined}
-                  >
-                    High Quality
-                  </button>
-                </div>
+            </div>
+          )}
+          {mode === "server" && (
+            <div className="inline-flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-muted-foreground">Quality</span>
+              <div className="inline-flex rounded-xl border border-border/40 bg-card/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setQuality("fast")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    quality === "fast" ? "text-white" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  style={quality === "fast" ? { background: `linear-gradient(135deg, ${accent}, ${accent}cc)` } : undefined}
+                >
+                  Fast
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuality("high")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    quality === "high" ? "text-white" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  style={quality === "high" ? { background: "linear-gradient(135deg, #14b8a6, #0d9488)" } : undefined}
+                >
+                  High Quality
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Converter Area */}
         <div {...getRootProps()} className="outline-none">
           <input {...getInputProps()} />
           {dropError && (
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-[20px] border border-rose-500/30 bg-rose-500/[0.07] px-5 py-4">
-              <p className="text-sm font-semibold text-rose-500">{dropError}</p>
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.07] px-4 py-3">
+              <p className="text-xs sm:text-sm font-semibold text-rose-500">{dropError}</p>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setDropError(null);
                 }}
-                className="touch-target p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
+                className="touch-target p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all cursor-pointer"
                 aria-label="Dismiss upload error"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
           )}
 
           {files.length === 0 ? (
-            /* Dropzone Empty State */
             <div 
-              className={`flex flex-col items-center justify-center text-center p-12 sm:p-20 rounded-[30px] border cursor-pointer transition-all duration-300 select-none ${
-                isDragActive ? 'bg-[#b9ff66]/10 border-[#b9ff66]' : 'positivus-card'
+              className={`animated-dashed-border flex flex-col items-center justify-center text-center p-12 sm:p-20 rounded-3xl cursor-pointer transition-all duration-300 select-none ${
+                isDragActive ? 'bg-indigo-500/[0.03]' : 'bg-card/50'
               }`}
             >
               <div 
-                className="flex items-center justify-center w-20 h-20 rounded-2xl mb-8 transition-all duration-300 positivus-card-green"
+                className="flex items-center justify-center w-16 h-16 rounded-2xl border mb-6 transition-all duration-300"
+                style={{
+                  borderColor: isDragActive ? accent : 'var(--border)',
+                  backgroundColor: `${accent}10`,
+                }}
               >
-                <UploadCloud size={40} className={isDragActive ? "text-[#191a23] animate-bounce" : "text-[#191a23]"} />
+                <UploadCloud size={28} style={{ color: accent }} className={isDragActive ? "animate-bounce" : ""} />
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight mb-3">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-tight mb-2">
                 Drag & drop your {config.from.toUpperCase().replace('.','')} file here
               </h2>
-              <p className="text-sm text-muted-foreground max-w-xs mb-8">
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mb-8">
                 or click anywhere on this card to browse files from your local storage.
               </p>
 
-              <div className="flex flex-wrap gap-3 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {mode === "client" ? (
-                  <span className="px-4 py-2 rounded-full border text-xs font-bold positivus-card-green text-[#191a23]">
+                  <span 
+                    className="px-3 py-1 rounded-full border text-[10px] font-bold"
+                    style={{
+                      borderColor: `${accent}30`,
+                      backgroundColor: `${accent}12`,
+                      color: accent
+                    }}
+                  >
                     No file limit
                   </span>
                 ) : (
-                  <span className="px-4 py-2 rounded-full bg-secondary border border-border text-xs font-semibold text-muted-foreground">
+                  <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
                     Max {maxUploadMb} MB
                   </span>
                 )}
                 <span 
-                  className="px-4 py-2 rounded-full border text-xs font-bold positivus-card-green text-[#191a23]"
+                  className="px-3 py-1 rounded-full border text-[10px] font-bold"
+                  style={{
+                    borderColor: `${accent}30`,
+                    backgroundColor: `${accent}12`,
+                    color: accent
+                  }}
                 >
                   {config.from.toUpperCase().replace('.','')} Source
                 </span>
-                <span className="px-4 py-2 rounded-full bg-secondary border border-border text-xs font-semibold text-muted-foreground">
+                <span className="px-3 py-1 rounded-full bg-secondary/80 border border-border/40 text-[10px] font-semibold text-muted-foreground">
                   Batch Allowed
                 </span>
               </div>
             </div>
           ) : (
-            /* File rows listing */
             <div className="space-y-4">
               {isDragActive && (
-                <div className="p-8 rounded-[20px] text-center bg-[#b9ff66]/10 border border-[#b9ff66]">
-                  <UploadCloud size={24} className="mx-auto mb-2 text-[#b9ff66] animate-bounce" />
-                  <p className="text-sm font-bold text-[#b9ff66]">Drop your additional files here...</p>
+                <div className="animated-dashed-border p-8 rounded-2xl text-center bg-indigo-500/[0.02]">
+                  <UploadCloud size={20} style={{ color: accent }} className="mx-auto mb-2 animate-bounce" />
+                  <p className="text-xs font-bold text-indigo-500">Drop your additional files here...</p>
                 </div>
               )}
 
@@ -622,7 +625,6 @@ export default function ConvertPage() {
                 </AnimatePresence>
               </div>
 
-              {/* Conversion Buttons row */}
               {!isDragActive && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <button
@@ -630,9 +632,9 @@ export default function ConvertPage() {
                       e.stopPropagation();
                       open();
                     }}
-                    className="flex items-center justify-center gap-2 w-full sm:w-1/2 py-4 px-6 rounded-[14px] bg-secondary hover:bg-secondary/80 border border-border text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all duration-200"
+                    className="flex items-center justify-center gap-1.5 w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border/40 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-all duration-150"
                   >
-                    <Plus size={18} /> Add More Files
+                    <Plus size={15} /> Add More Files
                   </button>
                   <button
                     onClick={(e) => {
@@ -643,15 +645,23 @@ export default function ConvertPage() {
                         setForceConvertAll(true);
                       }
                     }}
-                    className="flex items-center justify-center gap-2 w-full sm:w-1/2 py-4 px-6 rounded-[14px] text-sm font-bold positivus-btn-primary cursor-pointer transition-all duration-200"
+                    className="flex items-center justify-center gap-1.5 w-full sm:w-1/2 py-3 px-5 rounded-2xl text-sm font-bold text-white shadow-lg cursor-pointer transition-all duration-150 hover:opacity-95 hover:scale-[1.01] active:scale-[0.99]"
+                    style={{
+                      background: allConverted
+                        ? "linear-gradient(135deg, #10b981, #059669)"
+                        : `linear-gradient(135deg, ${accent}, ${accent}dd)`,
+                      boxShadow: allConverted
+                        ? "0 8px 24px rgba(16,185,129,0.25)"
+                        : `0 8px 24px ${accent}25`
+                    }}
                   >
                     {allConverted ? (
                       <>
-                        <Download size={18} /> {files.length > 1 ? "Download All" : "Download"}
+                        <Download size={15} /> {files.length > 1 ? "Download All" : "Download"}
                       </>
                     ) : (
                       <>
-                        <Zap size={18} /> {files.length > 1 ? "Convert All" : "Convert"}
+                        <Zap size={15} /> {files.length > 1 ? "Convert All" : "Convert"}
                       </>
                     )}
                   </button>
@@ -662,10 +672,7 @@ export default function ConvertPage() {
         </div>
       </main>
 
-      {/* Global Footer */}
       <Footer />
-
-
 
     </div>
   );
