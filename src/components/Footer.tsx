@@ -28,7 +28,7 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Footer Top Links */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 pb-8 border-b border-border/20">
+        <div className="flex flex-col sm:flex-row justify-between gap-8 pb-8 border-b border-border/20">
           <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
             <Link href="/" className="text-lg font-bold tracking-tight select-none mb-3">
               <span className="text-foreground">Conver</span>
@@ -76,32 +76,32 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="flex flex-col items-center sm:items-end text-center sm:text-right">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4 w-full">Developer</h4>
-            <ul className="space-y-2 text-sm w-full">
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground mb-4">Developer</h4>
+            <ul className="space-y-2 text-sm">
               <li>
-                <a href="https://linkedin.com/in/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  LinkedIn <LinkedInIcon size={14} />
+                <a href="https://linkedin.com/in/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <LinkedInIcon size={14} /> LinkedIn
                 </a>
               </li>
               <li>
-                <a href="https://github.com/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  GitHub <GitHubIcon size={14} />
+                <a href="https://github.com/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <GitHubIcon size={14} /> GitHub
                 </a>
               </li>
               <li>
-                <a href="https://mail.google.com/mail/u/0/?to=sougandh7ss@gmail.com&su=Hello+from+your+website&fs=1&tf=cm" target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  Email <Mail size={14} />
+                <a href="https://mail.google.com/mail/u/0/?to=sougandh7ss@gmail.com&su=Hello+from+your+website&fs=1&tf=cm" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <Mail size={14} /> Email
                 </a>
               </li>
               <li>
-                <a href="https://discord.com/users/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  Discord <DiscordIcon size={14} />
+                <a href="https://discord.com/users/sougandhhhhh" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <DiscordIcon size={14} /> Discord
                 </a>
               </li>
               <li>
-                <a href="https://sougandhkp.me" target="_blank" rel="noopener noreferrer" className="flex items-center justify-end gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  Website <Globe size={14} />
+                <a href="https://sougandhkp.me" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <Globe size={14} /> Website
                 </a>
               </li>
             </ul>
