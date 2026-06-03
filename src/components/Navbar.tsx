@@ -63,7 +63,8 @@ export default function Navbar() {
           
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="text-xl font-extrabold tracking-tight select-none">
+            <Link href="/" className="flex items-center gap-2 text-xl font-extrabold tracking-tight select-none">
+              <img src="/logo.svg" alt="Converto" className="h-7 w-7" />
               <span className="text-foreground">Conver</span>
               <span className="gradient-brand-text">to</span>
             </Link>

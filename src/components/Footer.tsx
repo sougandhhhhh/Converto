@@ -30,7 +30,8 @@ export default function Footer() {
         {/* Footer Top Links */}
         <div className="flex flex-col sm:flex-row justify-between gap-8 pb-8 border-b border-border/20">
           <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-            <Link href="/" className="text-lg font-bold tracking-tight select-none mb-3">
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight select-none mb-3">
+              <img src="/logo.svg" alt="Converto" className="h-6 w-6" />
               <span className="text-foreground">Conver</span>
               <span className="gradient-brand-text">to</span>
             </Link>
