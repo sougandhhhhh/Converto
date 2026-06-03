@@ -132,13 +132,19 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.45 }}
-          className="flex justify-center w-full mb-16"
+          className="flex justify-center gap-4 w-full mb-16"
         >
           <button
             onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
             className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-foreground text-background font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/10"
           >
             Start Converting <ArrowRight size={16} />
+          </button>
+          <button
+            onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
+            className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-border/60 text-foreground font-semibold hover:bg-secondary/60 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            Browse Formats
           </button>
         </motion.div>
 
