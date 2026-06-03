@@ -27,6 +27,20 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo.svg",
   },
+  openGraph: {
+    title: "Converto",
+    description: "Transform your documents with zero fidelity loss. Convert PDFs, images, spreadsheets, and more.",
+    url: "https://converto2026.vercel.app",
+    siteName: "Converto",
+    images: [{ url: "/logo.svg", width: 512, height: 512 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Converto",
+    description: "Transform your documents with zero fidelity loss. Convert PDFs, images, spreadsheets, and more.",
+    images: ["/logo.svg"],
+  },
 };
 
 export default function RootLayout({
