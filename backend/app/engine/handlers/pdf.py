@@ -312,11 +312,13 @@ class PDFHandler(BaseHandler):
             
             for t in tables:
                 tables_df.append(t.df)
+            logger.debug(f"Camelot extraction successful. Found {len(tables_df)} tables.")
         except Exception as e:
             logger.warning(f"Camelot table extraction failed: {e}. Trying pdfplumber fallback...")
 
         # Fallback to pdfplumber table extractor
         if not tables_df:
+            logger.debug("Attempting pdfplumber table extraction...")
             try:
                 with pdfplumber.open(pdf_path) as pdf:
                     for page in pdf.pages:
@@ -325,6 +327,7 @@ class PDFHandler(BaseHandler):
                             if tbl:
                                 # Clean None or empty headers
                                 tables_df.append(pd.DataFrame(tbl))
+                logger.debug(f"pdfplumber extraction successful. Found {len(tables_df)} tables.")
             except Exception as e:
                 logger.error(f"pdfplumber table extraction failed: {e}")
 
@@ -342,7 +345,7 @@ class PDFHandler(BaseHandler):
         # Normalize noisy extraction output so XLSX resembles polished converters:
         # - drop empty rows/cols
         # - remove synthetic numeric header row (0..n)
-        # - collapse to compact key/value shape when appropriate
+        # - detect PAN records for canonical cloud-like layout
         normalized_tables = [self._normalize_extracted_table(df) for df in tables_df]
 
         # Save to XLSX or CSV
@@ -397,20 +400,6 @@ class PDFHandler(BaseHandler):
             if numeric == list(range(len(numeric))):
                 cleaned = cleaned.iloc[1:].reset_index(drop=True)
 
-        # If many sparse columns exist, compact to first 1-2 meaningful cells per row.
-        if cleaned.shape[1] > 2:
-            rows = []
-            for _, row in cleaned.iterrows():
-                vals = [str(v).strip() for v in row.tolist() if str(v).strip()]
-                if not vals:
-                    continue
-                if len(vals) == 1:
-                    rows.append([vals[0], ""])
-                else:
-                    rows.append([vals[0], vals[1]])
-            if rows:
-                cleaned = pd.DataFrame(rows, columns=["A", "B"])
-
         cleaned = cleaned.reset_index(drop=True)
 
         # PAN-document-aware canonical shape (editable cells, cloudconvert-like).
@@ -418,11 +407,9 @@ class PDFHandler(BaseHandler):
         if canonical is not None:
             return canonical
 
-        # Generic normalization for non-PAN docs.
-        if cleaned.shape[1] >= 2:
-            key_col = cleaned.columns[0]
-            val_col = cleaned.columns[1]
-            cleaned[val_col] = [str(v).strip() for v in cleaned[val_col].tolist()]
+        # Strip whitespace from all cells.
+        cleaned = cleaned.map(lambda v: str(v).strip() if v is not None else "")
+
         return cleaned
 
     def _build_pan_record_table(self, cleaned):
@@ -524,12 +511,23 @@ class PDFHandler(BaseHandler):
 
     def _postformat_xlsx(self, workbook):
         from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
 
         for ws in workbook.worksheets:
-            # Match cloud-like geometry.
-            ws.column_dimensions["A"].width = 22
-            ws.column_dimensions["B"].width = 60
-            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=2):
+            max_col = ws.max_column or 2
+
+            # Dynamic column widths based on content (cap at 60).
+            for col_idx in range(1, max_col + 1):
+                max_len = 0
+                for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 100), min_col=col_idx, max_col=col_idx):
+                    for cell in row:
+                        if cell.value:
+                            max_len = max(max_len, len(str(cell.value)))
+                width = min(max(max_len + 2, 10), 60)
+                ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+            # Alignment for all cells.
+            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=max_col):
                 for cell in row:
                     cell.alignment = Alignment(vertical="center", wrap_text=True)
 
@@ -572,13 +570,17 @@ class PDFHandler(BaseHandler):
                 for r in range(4, 8):
                     ws.row_dimensions[r].height = 38
             else:
-                # Generic fallback styling.
+                # Generic fallback styling: title rows (only first col has content) get bold + merge.
                 for r in range(1, ws.max_row + 1):
-                    a = ws.cell(r, 1).value
-                    b = ws.cell(r, 2).value
-                    if a and (b is None or str(b).strip() == "") and str(a).strip():
-                        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
-                        ws.cell(r, 1).font = Font(bold=True)
+                    first_val = ws.cell(r, 1).value
+                    if first_val and str(first_val).strip():
+                        others_empty = all(
+                            ws.cell(r, c).value is None or str(ws.cell(r, c).value).strip() == ""
+                            for c in range(2, max_col + 1)
+                        )
+                        if others_empty:
+                            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=max_col)
+                            ws.cell(r, 1).font = Font(bold=True)
 
     def _to_txt(self, pdf_path: Path, output_path: Path) -> Path:
         """
