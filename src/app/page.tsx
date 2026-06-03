@@ -141,7 +141,7 @@ export default function HomePage() {
             Start Converting <ArrowRight size={16} />
           </button>
           <button
-            onClick={() => document.getElementById("formats")?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() => router.push("/tools")}
             className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border-2 border-foreground/20 text-foreground font-semibold hover:bg-foreground/5 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-foreground/5"
           >
             Browse Formats
