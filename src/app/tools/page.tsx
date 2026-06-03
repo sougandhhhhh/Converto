@@ -179,11 +179,8 @@ export default function ToolsPage() {
   }, [searchQuery, selectedCategory]);
 
   return (
-    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden text-foreground transition-colors duration-300">
       
-      {/* Decorative Blur */}
-      <div className="absolute top-[-5%] left-[20%] w-[45vw] h-[45vw] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none -z-10" />
-
       {/* Global Navbar */}
       <Navbar />
 

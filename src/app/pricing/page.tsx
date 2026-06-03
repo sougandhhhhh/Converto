@@ -60,12 +60,8 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden text-foreground transition-colors duration-300">
       
-      {/* Background Decorative panels */}
-      <div className="absolute top-[-10%] left-[10%] w-[45vw] h-[45vw] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-      <div className="absolute bottom-[10%] right-[-5%] w-[40vw] h-[40vw] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-
       {/* Global Navbar */}
       <Navbar />
 

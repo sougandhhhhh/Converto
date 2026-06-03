@@ -7,12 +7,12 @@ export default function PrivacyPage() {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
-  const bg       = isDark ? "#080808" : "#f8fafc";
+  const bg       = isDark ? "#000000" : "#f8fafc";
   const textPrim = isDark ? "#f8fafc" : "#0f172a";
   const textMid  = isDark ? "#cbd5e1" : "#334155";
   const textMute = isDark ? "#64748b" : "#94a3b8";
   const border   = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
-  const navBg    = isDark ? "rgba(8,8,8,0.9)" : "rgba(248,250,252,0.9)";
+  const navBg    = isDark ? "rgba(0,0,0,0.9)" : "rgba(248,250,252,0.9)";
   const callout  = isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.05)";
   const calloutBorder = isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)";
   const btnBg    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";

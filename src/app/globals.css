@@ -71,7 +71,7 @@
 }
 
 .dark {
-  --background: oklch(0.08 0.008 240);
+  --background: #000000;
   --foreground: oklch(0.98 0.005 240);
   --card: oklch(0.11 0.01 240);
   --card-foreground: oklch(0.98 0.005 240);
@@ -89,6 +89,16 @@
   --border: oklch(0.2 0.015 240);
   --input: oklch(0.2 0.015 240 / 80%);
   --ring: oklch(0.65 0.15 250);
+}
+
+.dark body {
+  background-color: #000000;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, #131313 39px, #131313 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, #131313 39px, #131313 40px),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(0, 200, 255, 0.06) 0%, transparent 60%);
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-attachment: fixed;
 }
 
 @layer base {

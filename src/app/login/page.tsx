@@ -43,12 +43,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden text-foreground transition-colors duration-300">
       
       {/* Background radial highlights */}
-      <div className="absolute top-[10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none -z-10" />
-      <div className="absolute bottom-[10%] right-[-10%] w-[45vw] h-[45vw] bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-[130px] pointer-events-none -z-10" />
-
       {/* Global Navbar */}
       <Navbar />
 

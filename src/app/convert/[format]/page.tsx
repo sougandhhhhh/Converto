@@ -379,7 +379,7 @@ export default function ConvertPage() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-300">
+    <div className="flex flex-col min-h-screen relative overflow-hidden text-foreground transition-colors duration-300">
       
       <Navbar />
 
