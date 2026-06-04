@@ -110,7 +110,7 @@ export default function Footer() {
 
         {/* Footer Bottom */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 text-xs text-muted-foreground">
-          <span>&copy; {new Date().getFullYear()} CONVERTO. Spectral rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} CONVERTO. All rights reserved.</span>
           
           {/* Status Indicator */}
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-semibold select-none">
