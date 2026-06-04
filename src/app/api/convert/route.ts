@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -142,10 +143,50 @@ async function waitForConversion(taskId: string, backendApiBase: string): Promis
   throw new Error("Conversion timed out. Please try again.");
 }
 
+async function tryDirectConversion(file: File, fromExt: string, toExt: string): Promise<Buffer | null> {
+  // PDF → DOCX: extract text with pdf-parse and build a DOCX with the docx library
+  if (fromExt === ".pdf" && toExt === ".docx") {
+    try {
+      const pdfParse = (await import("pdf-parse")).default;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfBuffer = Buffer.from(arrayBuffer);
+      const data = await pdfParse(pdfBuffer);
+      const lines = data.text.split("\n").filter((l: string) => l.trim());
+      const doc = new Document({
+        sections: [{
+          children: lines.map((line: string) => new Paragraph({ children: [new TextRun(line)] })),
+        }],
+      });
+      return await Packer.toBuffer(doc);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const backendApiBase = getBackendApiBase();
     if (!backendApiBase) {
+      // Try direct fallback conversions before returning a configuration error
+      const formData = await req.formData();
+      const file = formData.get("file");
+      const format = formData.get("format");
+      const to = formData.get("to");
+      if (file instanceof File && typeof format === "string" && typeof to === "string") {
+        const fallbackBuffer = await tryDirectConversion(file, format, to);
+        if (fallbackBuffer) {
+          const targetExt = normalizeExt(to);
+          const outName = file.name.replace(/\.[^/.]+$/, "") + targetExt;
+          return new NextResponse(new Uint8Array(fallbackBuffer), {
+            headers: {
+              "Content-Type": OUTPUT_CONTENT_TYPES[targetExt] || "application/octet-stream",
+              "Content-Disposition": `attachment; filename="${outName}"`,
+            },
+          });
+        }
+      }
       return NextResponse.json(
         {
           error: "Conversion failed",

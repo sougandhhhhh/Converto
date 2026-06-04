@@ -276,6 +276,9 @@ export function useConvert(): UseConvertResult {
       if (err instanceof DOMException && err.name === "AbortError") {
         errorMessage = "Request timed out while contacting conversion service. Please try again.";
       }
+      if (err instanceof TypeError && errorMessage === "Failed to fetch") {
+        errorMessage = "Could not reach the conversion server. The backend service may be unavailable. Please try again later.";
+      }
       setError(errorMessage || "An unexpected error occurred during conversion.");
       setProgress(0);
     }
